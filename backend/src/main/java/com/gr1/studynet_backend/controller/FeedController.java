@@ -1,6 +1,7 @@
 package com.gr1.studynet_backend.controller;
 
 import com.gr1.studynet_backend.dto.FeedPostResponse;
+import com.gr1.studynet_backend.dto.GroupDetailResponse;
 import com.gr1.studynet_backend.dto.GroupResponse;
 import com.gr1.studynet_backend.dto.NotificationSummaryResponse;
 import com.gr1.studynet_backend.dto.CreateGroupRequest;
@@ -17,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -86,9 +88,27 @@ public class FeedController {
         return feedService.createGroup(request);
     }
 
+    @GetMapping("/groups/{groupId}")
+    public GroupDetailResponse getGroupDetail(
+        @PathVariable Long groupId,
+        @RequestParam(required = false) Long userId
+    ) {
+        return feedService.getGroupDetail(groupId, userId);
+    }
+
     @PostMapping("/groups/{groupId}/join")
     public GroupResponse joinGroup(@PathVariable Long groupId, @RequestParam Long userId) {
         return feedService.joinGroup(groupId, userId);
+    }
+
+    @DeleteMapping("/groups/{groupId}/members")
+    public void leaveGroup(@PathVariable Long groupId, @RequestParam Long userId) {
+        feedService.leaveGroup(groupId, userId);
+    }
+
+    @DeleteMapping("/groups/{groupId}")
+    public void deleteGroup(@PathVariable Long groupId, @RequestParam Long userId) {
+        feedService.deleteGroup(groupId, userId);
     }
 
     @GetMapping("/users/{userId}/posts")

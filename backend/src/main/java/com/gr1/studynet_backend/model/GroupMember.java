@@ -23,6 +23,9 @@ public class GroupMember {
     @Column(nullable = false, length = 15)
     private String role; // "MEMBER" hoặc "GROUP_ADMIN"
 
+    @Column(nullable = false, length = 15)
+    private String membershipStatus = "APPROVED"; // "PENDING" hoặc "APPROVED"
+
     private LocalDateTime joinedAt;
 
     @PrePersist

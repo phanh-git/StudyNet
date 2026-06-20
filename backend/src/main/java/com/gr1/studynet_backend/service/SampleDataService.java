@@ -247,6 +247,18 @@ public class SampleDataService implements CommandLineRunner {
         if (postsChanged) {
             postRepository.saveAll(posts);
         }
+
+        List<GroupMember> members = groupMemberRepository.findAll();
+        boolean membersChanged = false;
+        for (GroupMember member : members) {
+            if (member.getMembershipStatus() == null || member.getMembershipStatus().isBlank()) {
+                member.setMembershipStatus("APPROVED");
+                membersChanged = true;
+            }
+        }
+        if (membersChanged) {
+            groupMemberRepository.saveAll(members);
+        }
     }
 
     private Subject inferGroupSubject(String groupName, Map<String, Subject> subjectByCode) {
@@ -310,6 +322,7 @@ public class SampleDataService implements CommandLineRunner {
         member.setUser(user);
         member.setGroup(group);
         member.setRole(role);
+        member.setMembershipStatus("APPROVED");
         return member;
     }
 

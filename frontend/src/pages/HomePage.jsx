@@ -1,4 +1,4 @@
-import { BookOpen, Users, MessageSquare, Star, ArrowRight, Zap, Globe, Award } from 'lucide-react';
+import { BookOpen, Users, MessageSquare, Star, ArrowRight, Zap, Globe } from 'lucide-react';
 import {Link} from 'react-router-dom';
 import { motion } from 'framer-motion';
 
@@ -33,12 +33,6 @@ const features = [
     desc: 'Kết nối với sinh viên từ các trường đại học trên khắp Việt Nam',
     color: 'bg-purple-100 text-purple-600',
   },
-  {
-    icon: <Award className="w-6 h-6" />,
-    title: 'Phân quyền rõ ràng',
-    desc: 'Hệ thống quản lý User và Admin giúp duy trì chất lượng nội dung',
-    color: 'bg-rose-100 text-rose-600',
-  },
 ];
 
 const stats = [
@@ -48,7 +42,12 @@ const stats = [
   { value: '120+', label: 'Trường ĐH' },
 ];
 
-const subjects = ['Toán học', 'Vật lý', 'Hóa học', 'Lập trình', 'Tiếng Anh', 'Kinh tế', 'Sinh học', 'Văn học'];
+const subjects = [
+  { name: 'Lập trình', note: 'Nhóm Java, web, thuật toán', tone: 'from-indigo-600 to-blue-500' },
+  { name: 'Tiếng Anh', note: 'Tài liệu học thuật, thuyết trình', tone: 'from-emerald-500 to-teal-500' },
+  { name: 'Kinh tế', note: 'Case study, báo cáo, ôn thi', tone: 'from-amber-500 to-orange-500' },
+  { name: 'Vật lý đại cương', note: 'Bài tập, công thức, đề cương', tone: 'from-rose-500 to-pink-500' },
+];
 
 export default function HomePage() {
   return (
@@ -181,11 +180,15 @@ export default function HomePage() {
       <section className="py-10 bg-gray-50">
         <div className="max-w-4xl mx-auto px-6 text-center">
           <p className="text-sm text-gray-500 mb-4 font-medium uppercase tracking-wide">Các môn học nổi bật</p>
-          <div className="flex flex-wrap justify-center gap-2">
-            {subjects.map((s, i) => (
-              <span key={i} className="px-4 py-2 bg-white rounded-full text-sm text-gray-700 border border-gray-200 shadow-sm hover:border-indigo-300 hover:text-indigo-600 cursor-pointer transition-colors">
-                {s}
-              </span>
+          <div className="grid gap-4 md:grid-cols-2">
+            {subjects.map((subject, i) => (
+              <div key={i} className="rounded-3xl border border-white bg-white p-5 text-left shadow-sm">
+                <div className={`inline-flex rounded-full bg-gradient-to-r px-3 py-1 text-xs font-semibold text-white ${subject.tone}`}>
+                  Hot trong tuần
+                </div>
+                <h3 className="mt-4 text-lg font-semibold text-gray-900">{subject.name}</h3>
+                <p className="mt-2 text-sm text-gray-500">{subject.note}</p>
+              </div>
             ))}
           </div>
         </div>

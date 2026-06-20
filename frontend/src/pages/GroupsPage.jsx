@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Users, BookOpen } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import StudentNavbar from '../components/StudentNavbar';
 import { useAuth } from '../context/AuthContext';
 import { createGroup, fetchAllGroups, fetchSubjects, joinGroup } from '../services/api';
 
 export default function GroupsPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [subjects, setSubjects] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -12,8 +14,17 @@ export default function GroupsPage() {
   const [searchInput, setSearchInput] = useState('');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddingCustomSubject, setIsAddingCustomSubject] = useState(false);
+  const [isSubmittingGroup, setIsSubmittingGroup] = useState(false);
   const [pageError, setPageError] = useState('');
-  const [formData, setFormData] = useState({ name: '', description: '', subjectId: '', status: 'PUBLIC' });
+  const [formError, setFormError] = useState('');
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    subjectId: '',
+    customSubjectName: '',
+    status: 'PUBLIC',
+  });
 
   useEffect(() => {
     fetchSubjects().then(setSubjects).catch(() => {});
@@ -36,16 +47,35 @@ export default function GroupsPage() {
   };
 
   const handleCreateGroup = async () => {
-    const created = await createGroup({
-      name: formData.name,
-      description: formData.description,
-      subjectId: Number(formData.subjectId),
-      status: formData.status,
-      creatorId: user.id,
-    });
-    setGroups((current) => [created, ...current]);
-    setFormData({ name: '', description: '', subjectId: '', status: 'PUBLIC' });
-    setIsModalOpen(false);
+    const hasSelectedSubject = Boolean(formData.subjectId);
+    const hasCustomSubject = Boolean(formData.customSubjectName.trim());
+
+    if (!hasSelectedSubject && !hasCustomSubject) {
+      setFormError('Vui lòng chọn môn học gợi ý hoặc nhập môn học mới.');
+      return;
+    }
+
+    try {
+      setIsSubmittingGroup(true);
+      setFormError('');
+      const created = await createGroup({
+        name: formData.name,
+        description: formData.description,
+        subjectId: hasSelectedSubject ? Number(formData.subjectId) : null,
+        customSubjectName: hasCustomSubject ? formData.customSubjectName.trim() : null,
+        status: formData.status,
+        creatorId: user.id,
+      });
+      setGroups((current) => [created, ...current]);
+      setFormData({ name: '', description: '', subjectId: '', customSubjectName: '', status: 'PUBLIC' });
+      setIsAddingCustomSubject(false);
+      setIsModalOpen(false);
+      navigate(`/groups/${created.id}`);
+    } catch (error) {
+      setFormError(error.message || 'Không thể tạo nhóm lúc này.');
+    } finally {
+      setIsSubmittingGroup(false);
+    }
   };
 
   return (
@@ -152,19 +182,25 @@ export default function GroupsPage() {
                 </div>
 
                 <div className="mt-6 flex gap-3">
-                  <button type="button" className="flex-1 rounded-full bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/groups/${group.id}`)}
+                    className="flex-1 rounded-full bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+                  >
                     Xem nhóm
                   </button>
                   <button
                     type="button"
-                    onClick={() => !group.joined && handleJoinGroup(group.id)}
+                    onClick={() => !group.joined && !group.pending && handleJoinGroup(group.id)}
                     className={`flex-1 rounded-full px-4 py-3 text-sm font-semibold transition ${
                       group.joined
                         ? 'bg-emerald-50 text-emerald-600'
-                        : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                        : group.pending
+                          ? 'bg-amber-50 text-amber-600'
+                          : 'bg-indigo-600 text-white hover:bg-indigo-700'
                     }`}
                   >
-                    {group.joined ? 'Đã tham gia' : 'Tham gia'}
+                    {group.joined ? 'Đã tham gia' : group.pending ? 'Đang chờ duyệt' : 'Tham gia'}
                   </button>
                 </div>
               </article>
@@ -195,24 +231,60 @@ export default function GroupsPage() {
                 rows={4}
                 className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-indigo-300"
               />
-              <select
-                value={formData.subjectId}
-                onChange={(event) => setFormData((current) => ({ ...current, subjectId: event.target.value }))}
-                className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-indigo-300"
-              >
-                <option value="">Chọn môn học</option>
-                {subjects.map((subject) => (
-                  <option key={subject.id} value={subject.id}>{subject.name}</option>
-                ))}
-              </select>
+              <div className="flex gap-3">
+                <select
+                  value={formData.subjectId}
+                  onChange={(event) => setFormData((current) => ({ ...current, subjectId: event.target.value }))}
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-indigo-300"
+                >
+                  <option value="">Môn học</option>
+                  {subjects.map((subject) => (
+                    <option key={subject.id} value={subject.id}>{subject.name}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setIsAddingCustomSubject((current) => !current)}
+                  className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 transition hover:bg-slate-200"
+                  title="Thêm môn học mới"
+                >
+                  <Plus className="h-5 w-5" />
+                </button>
+              </div>
+              {isAddingCustomSubject && (
+                <input
+                  value={formData.customSubjectName}
+                  onChange={(event) => setFormData((current) => ({ ...current, customSubjectName: event.target.value }))}
+                  placeholder="Nhập tên môn học chưa có trên hệ thống"
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-indigo-300"
+                />
+              )}
+              {formError && (
+                <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+                  {formError}
+                </div>
+              )}
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
-              <button type="button" onClick={() => setIsModalOpen(false)} className="rounded-full bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-700">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setFormError('');
+                  setIsAddingCustomSubject(false);
+                }}
+                className="rounded-full bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-700"
+              >
                 Hủy
               </button>
-              <button type="button" onClick={handleCreateGroup} className="rounded-full bg-indigo-600 px-5 py-3 text-sm font-semibold text-white">
-                Tạo nhóm
+              <button
+                type="button"
+                onClick={handleCreateGroup}
+                disabled={isSubmittingGroup}
+                className="rounded-full bg-indigo-600 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSubmittingGroup ? 'Đang tạo...' : 'Tạo nhóm'}
               </button>
             </div>
           </div>

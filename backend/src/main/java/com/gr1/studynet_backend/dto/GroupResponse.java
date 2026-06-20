@@ -16,4 +16,5 @@ public class GroupResponse {
     private long memberCount;
     private long postCount;
     private boolean joined;
+    private boolean pending;
 }

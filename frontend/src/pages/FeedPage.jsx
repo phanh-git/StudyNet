@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CircleHelp, FileText, MessageCircle, Megaphone, Plus, Heart, Send, ThumbsUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import StudentNavbar from '../components/StudentNavbar';
 import { useAuth } from '../context/AuthContext';
 import { addComment, createPost, fetchComments, fetchFeed, fetchSubjects, fetchUserGroups, reactToPost } from '../services/api';
@@ -54,6 +55,7 @@ export default function FeedPage() {
   const [expandedComments, setExpandedComments] = useState({});
   const [commentsByPost, setCommentsByPost] = useState({});
   const [commentInputs, setCommentInputs] = useState({});
+  const navigate = useNavigate();
 
   useEffect(() => {
     Promise.all([fetchSubjects(), fetchUserGroups(user.id)])
@@ -168,13 +170,22 @@ export default function FeedPage() {
 
             <div className="space-y-3">
               {groups.map((group) => (
-                <div key={group.id} className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
+                <div
+                  key={group.id}
+                  onClick={() => navigate(`/groups/${group.id}`)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') navigate(`/groups/${group.id}`);
+                  }}
+                  className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 transition hover:border-indigo-200 hover:bg-indigo-50 cursor-pointer"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
                       <p className="font-semibold text-slate-800">{group.name}</p>
                       <p className="mt-1 text-xs text-slate-500">{group.subjectName || 'Chưa gắn môn học'}</p>
                     </div>
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-indigo-600">
+                    <span className="flex-shrink-0 whitespace-nowrap rounded-full bg-white px-3 py-1 text-xs font-semibold text-indigo-600">
                       {group.memberCount} thành viên
                     </span>
                   </div>

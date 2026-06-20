@@ -92,6 +92,11 @@ export function fetchAllGroups(params = {}) {
   return request(`/groups${query ? `?${query}` : ''}`);
 }
 
+export function fetchGroupDetail(groupId, userId) {
+  const query = userId ? `?userId=${userId}` : '';
+  return request(`/groups/${groupId}${query}`);
+}
+
 export function createGroup(payload) {
   return request('/groups', {
     method: 'POST',
@@ -102,6 +107,18 @@ export function createGroup(payload) {
 export function joinGroup(groupId, userId) {
   return request(`/groups/${groupId}/join?userId=${userId}`, {
     method: 'POST',
+  });
+}
+
+export function leaveGroup(groupId, userId) {
+  return request(`/groups/${groupId}/members?userId=${userId}`, {
+    method: 'DELETE',
+  });
+}
+
+export function deleteGroup(groupId, userId) {
+  return request(`/groups/${groupId}?userId=${userId}`, {
+    method: 'DELETE',
   });
 }
 

@@ -3,6 +3,8 @@ package com.gr1.studynet_backend.repository;
 import com.gr1.studynet_backend.model.Reaction;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+
+import java.util.Collection;
 import java.util.Optional;
 
 @Repository
@@ -15,4 +17,6 @@ public interface ReactionRepository extends JpaRepository<Reaction, Long> {
 
     // Tìm xem một người dùng cụ thể đã thả cảm xúc vào bài viết này chưa
     Optional<Reaction> findByPostIdAndUserId(Long postId, Long userId);
+
+    void deleteByPostIdIn(Collection<Long> postIds);
 }

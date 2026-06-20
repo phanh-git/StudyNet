@@ -50,11 +50,11 @@ export default function StudentNavbar({ searchValue, onSearchValueChange, onSear
 
   const handleNotificationClick = async (notification) => {
     if (!notification.isRead) {
-      await markNotificationAsRead(user.id, notification.id);
       setNotifications((current) => current.map((item) => (
         item.id === notification.id ? { ...item, isRead: true } : item
       )));
       setUnreadCount((count) => Math.max(0, count - 1));
+      markNotificationAsRead(user.id, notification.id).catch(() => {});
     }
 
     setNotificationsOpen(false);
@@ -72,7 +72,6 @@ export default function StudentNavbar({ searchValue, onSearchValueChange, onSear
           </div>
           <div>
             <p className="text-xl font-bold text-slate-900">StudyNet</p>
-            <p className="text-xs text-slate-500">Không gian học tập của sinh viên</p>
           </div>
         </button>
 

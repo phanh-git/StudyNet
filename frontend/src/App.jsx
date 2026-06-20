@@ -5,6 +5,7 @@ import RegisterPage from './pages/RegisterPage';
 import FeedPage from './pages/FeedPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import GroupsPage from './pages/GroupsPage';
+import GroupDetailPage from './pages/GroupDetailPage';
 import ProfilePage from './pages/ProfilePage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
@@ -31,6 +32,14 @@ function App() {
           element={
             <ProtectedRoute allowRole="USER">
               <GroupsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/groups/:groupId"
+          element={
+            <ProtectedRoute allowRole="USER">
+              <GroupDetailPage />
             </ProtectedRoute>
           }
         />

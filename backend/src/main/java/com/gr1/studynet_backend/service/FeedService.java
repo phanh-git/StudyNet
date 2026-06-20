@@ -5,6 +5,8 @@ import com.gr1.studynet_backend.dto.CreatePostRequest;
 import com.gr1.studynet_backend.dto.CommentRequest;
 import com.gr1.studynet_backend.dto.CommentResponse;
 import com.gr1.studynet_backend.dto.FeedPostResponse;
+import com.gr1.studynet_backend.dto.GroupDetailResponse;
+import com.gr1.studynet_backend.dto.GroupMemberResponse;
 import com.gr1.studynet_backend.dto.GroupResponse;
 import com.gr1.studynet_backend.dto.NotificationResponse;
 import com.gr1.studynet_backend.dto.ReactionRequest;
@@ -26,8 +28,10 @@ import com.gr1.studynet_backend.repository.ReactionRepository;
 import com.gr1.studynet_backend.repository.SubjectRepository;
 import com.gr1.studynet_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 
+import java.text.Normalizer;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -69,7 +73,7 @@ public class FeedService {
     }
 
     public List<GroupResponse> getUserGroups(Long userId) {
-        return groupMemberRepository.findByUserId(userId).stream()
+        return groupMemberRepository.findByUserIdAndMembershipStatus(userId, "APPROVED").stream()
             .map(member -> mapGroup(member.getGroup(), userId, member.getRole()))
             .toList();
     }
@@ -94,11 +98,11 @@ public class FeedService {
             .toList();
     }
 
+    @Transactional
     public GroupResponse createGroup(CreateGroupRequest request) {
         User creator = userRepository.findById(request.getCreatorId())
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người tạo nhóm."));
-        Subject subject = subjectRepository.findById(request.getSubjectId())
-            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy môn học."));
+        Subject subject = resolveSubject(request.getSubjectId(), request.getCustomSubjectName());
 
         Group group = new Group();
         group.setName(request.getName().trim());
@@ -118,6 +122,7 @@ public class FeedService {
         return mapGroup(savedGroup, creator.getId(), "GROUP_ADMIN");
     }
 
+    @Transactional
     public GroupResponse joinGroup(Long groupId, Long userId) {
         Group group = groupRepository.findById(groupId)
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhóm."));
@@ -130,10 +135,72 @@ public class FeedService {
             member.setGroup(group);
             member.setUser(user);
             member.setRole("MEMBER");
+            member.setMembershipStatus("PENDING");
             groupMemberRepository.save(member);
         }
 
-        return mapGroup(group, userId, "MEMBER");
+        return mapGroup(group, userId, existing != null ? existing.getRole() : "MEMBER");
+    }
+
+    @Transactional
+    public void leaveGroup(Long groupId, Long userId) {
+        GroupMember membership = groupMemberRepository.findByUserIdAndGroupId(userId, groupId)
+            .orElseThrow(() -> new IllegalArgumentException("Bạn chưa tham gia nhóm này."));
+
+        if ("GROUP_ADMIN".equalsIgnoreCase(membership.getRole())) {
+            throw new IllegalArgumentException("Trưởng nhóm không thể rời nhóm. Hãy xóa nhóm nếu bạn muốn kết thúc nhóm này.");
+        }
+
+        groupMemberRepository.delete(membership);
+    }
+
+    @Transactional
+    public void deleteGroup(Long groupId, Long userId) {
+        Group group = groupRepository.findById(groupId)
+            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhóm."));
+        GroupMember membership = groupMemberRepository.findByUserIdAndGroupId(userId, groupId)
+            .orElseThrow(() -> new IllegalArgumentException("Bạn không có quyền xóa nhóm này."));
+
+        if (!"GROUP_ADMIN".equalsIgnoreCase(membership.getRole())) {
+            throw new IllegalArgumentException("Chỉ admin nhóm mới có thể xóa nhóm.");
+        }
+
+        List<Long> postIds = postRepository.findByGroupId(groupId).stream()
+            .map(Post::getId)
+            .toList();
+
+        if (!postIds.isEmpty()) {
+            reactionRepository.deleteByPostIdIn(postIds);
+            commentRepository.deleteByPostIdIn(postIds);
+            postRepository.deleteByGroupId(groupId);
+        }
+
+        groupMemberRepository.deleteByGroupId(groupId);
+        groupRepository.delete(group);
+    }
+
+    public GroupDetailResponse getGroupDetail(Long groupId, Long userId) {
+        Group group = groupRepository.findById(groupId)
+            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhóm."));
+
+        List<GroupMemberResponse> members = groupMemberRepository.findByGroupIdAndMembershipStatus(groupId, "APPROVED").stream()
+            .map(member -> new GroupMemberResponse(
+                member.getUser().getId(),
+                member.getUser().getFullName(),
+                member.getUser().getSchool(),
+                member.getRole()
+            ))
+            .toList();
+
+        List<FeedPostResponse> posts = postRepository.findByGroupIdOrderByCreatedAtDesc(groupId).stream()
+            .map(post -> mapPost(post, userId))
+            .toList();
+
+        return new GroupDetailResponse(
+            mapGroup(group, userId, null),
+            members,
+            posts
+        );
     }
 
     public FeedPostResponse createPost(CreatePostRequest request) {
@@ -149,6 +216,10 @@ public class FeedService {
         if (request.getGroupId() != null) {
             Group group = groupRepository.findById(request.getGroupId())
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhóm."));
+            GroupMember membership = groupMemberRepository.findByUserIdAndGroupId(user.getId(), group.getId()).orElse(null);
+            if (membership == null || !"APPROVED".equalsIgnoreCase(membership.getMembershipStatus())) {
+                throw new IllegalArgumentException("Bạn cần là thành viên của nhóm để đăng bài.");
+            }
             post.setGroup(group);
             if (request.getSubjectId() == null && group.getSubject() != null) {
                 post.setSubject(group.getSubject());
@@ -272,12 +343,56 @@ public class FeedService {
         return value.trim().toUpperCase(Locale.ROOT);
     }
 
+    private Subject resolveSubject(Long subjectId, String customSubjectName) {
+        if (subjectId != null) {
+            return subjectRepository.findById(subjectId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy môn học."));
+        }
+
+        if (customSubjectName == null || customSubjectName.isBlank()) {
+            throw new IllegalArgumentException("Vui lòng chọn hoặc nhập môn học.");
+        }
+
+        String normalizedName = customSubjectName.trim();
+        return subjectRepository.findByNameIgnoreCase(normalizedName)
+            .orElseGet(() -> subjectRepository.save(createCustomSubject(normalizedName)));
+    }
+
+    private Subject createCustomSubject(String subjectName) {
+        Subject subject = new Subject();
+        subject.setName(subjectName);
+        subject.setCode(generateSubjectCode(subjectName));
+        return subject;
+    }
+
+    private String generateSubjectCode(String subjectName) {
+        String normalized = Normalizer.normalize(subjectName, Normalizer.Form.NFD)
+            .replaceAll("\\p{M}+", "")
+            .replaceAll("[^A-Za-z0-9]+", "_")
+            .replaceAll("^_+|_+$", "")
+            .toUpperCase(Locale.ROOT);
+
+        String baseCode = normalized.isBlank() ? "SUBJECT" : normalized;
+        String candidate = baseCode.substring(0, Math.min(baseCode.length(), 60));
+        int suffix = 1;
+
+        while (subjectRepository.existsByCodeIgnoreCase(candidate)) {
+            String suffixValue = "_" + suffix++;
+            int availableLength = Math.max(1, 60 - suffixValue.length());
+            candidate = baseCode.substring(0, Math.min(baseCode.length(), availableLength)) + suffixValue;
+        }
+
+        return candidate;
+    }
+
     private GroupResponse mapGroup(Group group, Long userId, String fallbackRole) {
         GroupMember membership = userId != null
             ? groupMemberRepository.findByUserIdAndGroupId(userId, group.getId()).orElse(null)
             : null;
 
         String role = membership != null ? membership.getRole() : fallbackRole;
+        boolean joined = membership != null && "APPROVED".equalsIgnoreCase(membership.getMembershipStatus());
+        boolean pending = membership != null && "PENDING".equalsIgnoreCase(membership.getMembershipStatus());
 
         return new GroupResponse(
             group.getId(),
@@ -287,9 +402,10 @@ public class FeedService {
             role,
             group.getSubject() != null ? group.getSubject().getName() : null,
             group.getSubject() != null ? group.getSubject().getId() : null,
-            groupMemberRepository.countByGroupId(group.getId()),
+            groupMemberRepository.countByGroupIdAndMembershipStatus(group.getId(), "APPROVED"),
             postRepository.countByGroupId(group.getId()),
-            membership != null
+            joined,
+            pending
         );
     }
 
