@@ -7,6 +7,7 @@ import AdminDashboardPage from './pages/AdminDashboardPage';
 import GroupsPage from './pages/GroupsPage';
 import GroupDetailPage from './pages/GroupDetailPage';
 import ProfilePage from './pages/ProfilePage';
+import SettingsPage from './pages/SettingsPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 
@@ -48,6 +49,22 @@ function App() {
           element={
             <ProtectedRoute allowRole="USER">
               <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile/:userId"
+          element={
+            <ProtectedRoute allowRole="USER">
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute allowRole="USER">
+              <SettingsPage />
             </ProtectedRoute>
           }
         />

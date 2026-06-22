@@ -10,9 +10,9 @@ import { register as registerRequest } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 const STEPS = [
-  { title: 'Cá nhân', desc: 'Thông tin cơ bản' },
-  { title: 'Học vấn', desc: 'Trường và ngành học' },
-  { title: 'Bảo mật', desc: 'Tạo mật khẩu' },
+  { title: 'Cá nhân'},
+  { title: 'Học vấn'},
+  { title: 'Bảo mật'},
 ];
 
 const SUBJECTS = ['Lập trình', 'Toán học', 'Vật lý', 'Hóa học', 'Ngoại ngữ'];
@@ -65,7 +65,7 @@ export default function RegisterPage() {
 
   const { register, handleSubmit, watch, trigger, formState: { errors } } = useForm({
     mode: 'onChange',
-    defaultValues: { subject: 'Lập trình' },
+    defaultValues: { interestedSubjects: ['Lập trình'] },
   });
 
   const password = watch('password') || '';
@@ -95,6 +95,7 @@ export default function RegisterPage() {
         school: data.school,
         major: data.major,
         password: data.password,
+        interestedSubjects: data.interestedSubjects ?? [],
       });
       login(response.user);
       navigate('/feed');
@@ -280,21 +281,21 @@ export default function RegisterPage() {
                           <label
                             key={subject}
                             className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border cursor-pointer text-xs font-medium transition-all select-none ${
-                              watch('subject') === subject
+                              (watch('interestedSubjects') ?? []).includes(subject)
                                 ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200'
                                 : 'bg-white border-gray-200 text-gray-600 hover:border-indigo-300'
                             }`}
                           >
                             <input
-                              {...register('subject')}
-                              type="radio"
+                              {...register('interestedSubjects')}
+                              type="checkbox"
                               value={subject}
                               className="hidden"
                             />
                             {subject}
                           </label>
                         ))}
-                      </div>
+                      </div>          
                     </div>
                   </motion.div>
                 )}

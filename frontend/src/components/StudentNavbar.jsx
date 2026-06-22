@@ -3,25 +3,16 @@ import { Bell, BookOpen, ChevronDown, Home, LogOut, Search, Settings, UserCircle
 import { NavLink, useNavigate } from 'react-router-dom';
 import { fetchNotifications, fetchUnreadNotificationCount, markNotificationAsRead } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../context/SettingsContext';
 
 function avatarFromName(name = 'StudyNet User') {
   return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}&backgroundColor=b6e3f4`;
 }
 
-function formatTime(value) {
-  if (!value) return 'Vừa xong';
-  const date = new Date(value);
-  return new Intl.DateTimeFormat('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date);
-}
-
 export default function StudentNavbar({ searchValue, onSearchValueChange, onSearchSubmit }) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { t, locale } = useSettings();
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -63,6 +54,17 @@ export default function StudentNavbar({ searchValue, onSearchValueChange, onSear
     }
   };
 
+  const formatTime = (value) => {
+    if (!value) return t('common.justNow');
+    const date = new Date(value);
+    return new Intl.DateTimeFormat(locale, {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(date);
+  };
+
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="flex w-full items-center gap-4 px-4 py-3 lg:px-6">
@@ -78,21 +80,21 @@ export default function StudentNavbar({ searchValue, onSearchValueChange, onSear
         <nav className="hidden items-center gap-2 lg:flex">
           <NavLink
             to="/feed"
-            className={({ isActive }) => `flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-semibold transition ${
+            className={({ isActive }) => `flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
               isActive ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
             <Home className="h-4 w-4" />
-            Bảng tin
+            {t('nav.feed')}
           </NavLink>
           <NavLink
             to="/groups"
-            className={({ isActive }) => `flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-semibold transition ${
+            className={({ isActive }) => `flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
               isActive ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
             <Users className="h-4 w-4" />
-            Nhóm học tập
+            {t('nav.groups')}
           </NavLink>
         </nav>
 
@@ -102,7 +104,7 @@ export default function StudentNavbar({ searchValue, onSearchValueChange, onSear
             <input
               value={searchValue}
               onChange={(event) => onSearchValueChange(event.target.value)}
-              placeholder="Tìm kiếm bài viết, tài liệu, nhóm..."
+              placeholder={t('common.searchPlaceholder')}
               className="w-full bg-transparent px-3 text-sm text-slate-700 outline-none placeholder:text-slate-400"
             />
           </div>
@@ -113,7 +115,7 @@ export default function StudentNavbar({ searchValue, onSearchValueChange, onSear
             <button
               type="button"
               onClick={() => setNotificationsOpen((open) => !open)}
-              className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 transition hover:bg-slate-200"
+              className="relative flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200"
             >
               <Bell className="h-5 w-5" />
               {unreadCount > 0 && (
@@ -126,13 +128,13 @@ export default function StudentNavbar({ searchValue, onSearchValueChange, onSear
             {notificationsOpen && (
               <div className="absolute right-0 mt-3 w-96 rounded-3xl border border-slate-200 bg-white p-3 shadow-2xl shadow-slate-200">
                 <div className="mb-3 flex items-center justify-between px-2">
-                  <h3 className="font-semibold text-slate-900">Thông báo</h3>
-                  <span className="text-xs text-slate-500">{unreadCount} chưa đọc</span>
+                  <h3 className="font-semibold text-slate-900">{t('notifications.title')}</h3>
+                  <span className="text-xs text-slate-500">{unreadCount} {t('notifications.unread')}</span>
                 </div>
                 <div className="max-h-96 space-y-2 overflow-y-auto">
                   {notifications.length === 0 && (
                     <div className="rounded-2xl bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-                      Chưa có thông báo nào.
+                      {t('notifications.empty')}
                     </div>
                   )}
 
@@ -181,17 +183,17 @@ export default function StudentNavbar({ searchValue, onSearchValueChange, onSear
 
             {menuOpen && (
               <div className="absolute right-0 mt-3 w-56 rounded-3xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-200">
-                <button type="button" onClick={() => navigate('/profile')} className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-100">
+                <button type="button" onClick={() => navigate(`/profile/${user.id}`)} className="flex w-full items-center gap-3 rounded-full px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-100">
                   <UserCircle2 className="h-4 w-4" />
-                  Trang cá nhân
+                  {t('nav.profile')}
                 </button>
-                <button type="button" className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-100">
+                <button type="button" onClick={() => navigate('/settings')} className="flex w-full items-center gap-3 rounded-full px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-100">
                   <Settings className="h-4 w-4" />
-                  Cài đặt
+                  {t('nav.settings')}
                 </button>
-                <button type="button" onClick={logout} className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm text-rose-600 transition hover:bg-rose-50">
+                <button type="button" onClick={logout} className="flex w-full items-center gap-3 rounded-full px-4 py-3 text-sm text-rose-600 transition hover:bg-rose-50">
                   <LogOut className="h-4 w-4" />
-                  Đăng xuất
+                  {t('nav.logout')}
                 </button>
               </div>
             )}

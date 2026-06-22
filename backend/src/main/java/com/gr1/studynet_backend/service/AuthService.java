@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -26,6 +28,7 @@ public class AuthService {
         user.setEmail(request.getEmail().trim().toLowerCase());
         user.setSchool(request.getSchool().trim());
         user.setMajor(request.getMajor().trim());
+        user.setInterestedSubjects(serializeInterestedSubjects(request.getInterestedSubjects()));
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole("USER");
 
@@ -51,7 +54,32 @@ public class AuthService {
             user.getEmail(),
             user.getSchool(),
             user.getMajor(),
+            deserializeInterestedSubjects(user.getInterestedSubjects()),
             user.getRole()
         );
+    }
+
+    private String serializeInterestedSubjects(List<String> subjects) {
+        if (subjects == null || subjects.isEmpty()) {
+            return null;
+        }
+
+        return subjects.stream()
+            .filter(subject -> subject != null && !subject.isBlank())
+            .map(String::trim)
+            .distinct()
+            .reduce((left, right) -> left + "||" + right)
+            .orElse(null);
+    }
+
+    private List<String> deserializeInterestedSubjects(String subjects) {
+        if (subjects == null || subjects.isBlank()) {
+            return List.of();
+        }
+
+        return List.of(subjects.split("\\|\\|")).stream()
+            .map(String::trim)
+            .filter(subject -> !subject.isBlank())
+            .toList();
     }
 }

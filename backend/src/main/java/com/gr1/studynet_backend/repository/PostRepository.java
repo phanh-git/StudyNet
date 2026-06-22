@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Collection;
 
 @Repository
 public interface PostRepository extends JpaRepository<Post, Long> {
@@ -29,9 +30,15 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     long countByUserId(Long userId);
 
+    long countBySharedPostId(Long sharedPostId);
+
+    boolean existsByUserIdAndSharedPostId(Long userId, Long sharedPostId);
+
     List<Post> findByUserIdOrderByCreatedAtDesc(Long userId);
 
     List<Post> findByGroupId(Long groupId);
+
+    List<Post> findBySharedPostIdIn(Collection<Long> sharedPostIds);
 
     void deleteByGroupId(Long groupId);
 }

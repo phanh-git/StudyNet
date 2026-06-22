@@ -170,6 +170,11 @@ public class FeedService {
             .toList();
 
         if (!postIds.isEmpty()) {
+            List<Post> sharedCopies = postRepository.findBySharedPostIdIn(postIds);
+            if (!sharedCopies.isEmpty()) {
+                sharedCopies.forEach(post -> post.setSharedPost(null));
+                postRepository.saveAll(sharedCopies);
+            }
             reactionRepository.deleteByPostIdIn(postIds);
             commentRepository.deleteByPostIdIn(postIds);
             postRepository.deleteByGroupId(groupId);
@@ -207,9 +212,17 @@ public class FeedService {
         User user = userRepository.findById(request.getUserId())
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng."));
 
+        boolean hasContent = request.getContent() != null && !request.getContent().trim().isBlank();
+        boolean hasAttachment = request.getFileUrl() != null && !request.getFileUrl().trim().isBlank();
+        if (!hasContent && !hasAttachment) {
+            throw new IllegalArgumentException("Bài viết cần có nội dung hoặc ít nhất một tệp đính kèm.");
+        }
+
         Post post = new Post();
-        post.setContent(request.getContent().trim());
+        post.setContent(hasContent ? request.getContent().trim() : null);
         post.setFileUrl(request.getFileUrl());
+        post.setFileName(request.getFileName());
+        post.setFileType(request.getFileType());
         post.setType(request.getType().trim().toUpperCase(Locale.ROOT));
         post.setUser(user);
 
@@ -257,9 +270,9 @@ public class FeedService {
         notificationRepository.save(notification);
     }
 
-    public List<FeedPostResponse> getPostsByUser(Long userId) {
+    public List<FeedPostResponse> getPostsByUser(Long userId, Long currentUserId) {
         return postRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
-            .map(post -> mapPost(post, userId))
+            .map(post -> mapPost(post, currentUserId))
             .toList();
     }
 
@@ -291,10 +304,35 @@ public class FeedService {
         );
     }
 
+    public FeedPostResponse sharePost(Long postId, Long userId) {
+        Post sourcePost = postRepository.findById(postId)
+            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài viết."));
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng."));
+
+        if (postRepository.existsByUserIdAndSharedPostId(userId, sourcePost.getId())) {
+            throw new IllegalArgumentException("Bạn đã chia sẻ bài viết này về trang cá nhân rồi.");
+        }
+
+        Post sharedPost = new Post();
+        sharedPost.setContent(sourcePost.getContent());
+        sharedPost.setFileUrl(sourcePost.getFileUrl());
+        sharedPost.setFileName(sourcePost.getFileName());
+        sharedPost.setFileType(sourcePost.getFileType());
+        sharedPost.setType(sourcePost.getType());
+        sharedPost.setUser(user);
+        sharedPost.setSubject(sourcePost.getSubject());
+        sharedPost.setSharedPost(sourcePost);
+
+        Post savedPost = postRepository.save(sharedPost);
+        return mapPost(savedPost, userId);
+    }
+
     public List<CommentResponse> getCommentsByPost(Long postId) {
         return commentRepository.findByPostIdOrderByCreatedAtAsc(postId).stream()
             .map(comment -> new CommentResponse(
                 comment.getId(),
+                comment.getUser().getId(),
                 comment.getContent(),
                 comment.getUser().getFullName(),
                 comment.getUser().getSchool(),
@@ -318,6 +356,7 @@ public class FeedService {
 
         return new CommentResponse(
             savedComment.getId(),
+            savedComment.getUser().getId(),
             savedComment.getContent(),
             savedComment.getUser().getFullName(),
             savedComment.getUser().getSchool(),
@@ -410,22 +449,41 @@ public class FeedService {
     }
 
     private FeedPostResponse mapPost(Post post, Long currentUserId) {
+        return mapPost(post, currentUserId, 3);
+    }
+
+    private FeedPostResponse mapPost(Post post, Long currentUserId, int remainingSharedDepth) {
+        Post sharedSource = post.getSharedPost();
+        FeedPostResponse sharedPostPreview = sharedSource != null && remainingSharedDepth > 0
+            ? mapPost(sharedSource, currentUserId, remainingSharedDepth - 1)
+            : null;
+
         return FeedPostResponse.builder()
             .id(post.getId())
+            .authorId(post.getUser().getId())
             .content(post.getContent())
             .fileUrl(post.getFileUrl())
+            .fileName(post.getFileName())
+            .fileType(post.getFileType())
             .type(post.getType())
             .createdAt(post.getCreatedAt())
             .authorName(post.getUser().getFullName())
             .authorEmail(post.getUser().getEmail())
             .authorSchool(post.getUser().getSchool())
+            .shared(sharedSource != null)
+            .sharedPostId(sharedSource != null ? sharedSource.getId() : null)
+            .sharedAuthorId(sharedSource != null ? sharedSource.getUser().getId() : null)
+            .sharedAuthorName(sharedSource != null ? sharedSource.getUser().getFullName() : null)
             .groupName(post.getGroup() != null ? post.getGroup().getName() : null)
             .subjectName(post.getSubject() != null ? post.getSubject().getName() : null)
             .reactionCount(reactionRepository.countByPostId(post.getId()))
             .commentCount(commentRepository.findByPostIdOrderByCreatedAtAsc(post.getId()).size())
+            .shareCount(postRepository.countBySharedPostId(post.getId()))
+            .currentUserShared(currentUserId != null && postRepository.existsByUserIdAndSharedPostId(currentUserId, post.getId()))
             .currentUserReaction(currentUserId != null
                 ? reactionRepository.findByPostIdAndUserId(post.getId(), currentUserId).map(Reaction::getType).orElse(null)
                 : null)
+            .sharedPostPreview(sharedPostPreview)
             .build();
     }
 }

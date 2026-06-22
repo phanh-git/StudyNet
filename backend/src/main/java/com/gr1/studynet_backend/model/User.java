@@ -25,6 +25,9 @@ public class User {
 
     private String major;
 
+    @Column(columnDefinition = "TEXT")
+    private String interestedSubjects;
+
     @Column(nullable = false, length = 10)
     private String role; // "USER" hoặc "ADMIN"
 

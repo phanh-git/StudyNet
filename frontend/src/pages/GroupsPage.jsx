@@ -93,20 +93,20 @@ export default function GroupsPage() {
         <aside className="space-y-6">
           <section className="rounded-[28px] bg-white p-5 shadow-sm">
             <h2 className="font-semibold text-slate-900">Lọc theo môn học</h2>
-            <div className="mt-4 flex flex-col gap-2">
+            <div className="mt-4 flex flex-wrap items-start gap-2">
               <button
                 type="button"
                 onClick={() => setSelectedSubjectId(null)}
-                className={`rounded-2xl px-4 py-3 text-left text-sm font-semibold transition ${selectedSubjectId === null ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                className={`rounded-full px-4 py-3 text-left text-sm font-semibold transition ${selectedSubjectId === null ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
               >
-                Tất cả môn học
+                Tất cả
               </button>
               {subjects.map((subject) => (
                 <button
                   key={subject.id}
                   type="button"
                   onClick={() => setSelectedSubjectId(subject.id)}
-                  className={`rounded-2xl px-4 py-3 text-left text-sm font-semibold transition ${selectedSubjectId === subject.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                  className={`rounded-full px-4 py-3 text-left text-sm font-semibold transition ${selectedSubjectId === subject.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                 >
                   {subject.name}
                 </button>

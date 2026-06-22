@@ -15,18 +15,18 @@ const features = [
     desc: 'Đăng câu hỏi, chia sẻ tài liệu và thảo luận như mạng xã hội thực thụ',
     color: 'bg-blue-100 text-blue-600',
   },
-  {
-    icon: <BookOpen className="w-6 h-6" />,
-    title: 'Kho tài liệu phong phú',
-    desc: 'Hàng nghìn tài liệu học tập được chia sẻ bởi cộng đồng sinh viên',
-    color: 'bg-emerald-100 text-emerald-600',
-  },
-  {
-    icon: <Zap className="w-6 h-6" />,
-    title: 'Tìm kiếm thông minh',
-    desc: 'Lọc bài viết theo môn học, loại nội dung và thời gian một cách dễ dàng',
-    color: 'bg-amber-100 text-amber-600',
-  },
+  // {
+  //   icon: <BookOpen className="w-6 h-6" />,
+  //   title: 'Kho tài liệu phong phú',
+  //   desc: 'Hàng nghìn tài liệu học tập được chia sẻ bởi cộng đồng sinh viên',
+  //   color: 'bg-emerald-100 text-emerald-600',
+  // },
+  // {
+  //   icon: <Zap className="w-6 h-6" />,
+  //   title: 'Tìm kiếm thông minh',
+  //   desc: 'Lọc bài viết theo môn học, loại nội dung và thời gian một cách dễ dàng',
+  //   color: 'bg-amber-100 text-amber-600',
+  // },
   {
     icon: <Globe className="w-6 h-6" />,
     title: 'Kết nối toàn quốc',
@@ -92,7 +92,7 @@ export default function HomePage() {
               transition={{ duration: 0.5 }}
             >
               <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-100 text-indigo-700 text-base font-medium rounded-full mb-6">
-                <Star className="w-3.5 h-3.5 fill-indigo-500" />
+                <Star className="w-3.5 h-3.5 fill-yellow-500" />
                 Mạng xã hội học tập #1 Việt Nam
               </span>
               <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight mb-6">
@@ -179,7 +179,7 @@ export default function HomePage() {
       {/* Subject Tags */}
       <section className="py-10 bg-gray-50">
         <div className="max-w-4xl mx-auto px-6 text-center">
-          <p className="text-sm text-gray-500 mb-4 font-medium uppercase tracking-wide">Các môn học nổi bật</p>
+          <h2 className="text-3xl font-bold text-gray-900 mb-3">Các môn học nổi bật</h2>
           <div className="grid gap-4 md:grid-cols-2">
             {subjects.map((subject, i) => (
               <div key={i} className="rounded-3xl border border-white bg-white p-5 text-left shadow-sm">

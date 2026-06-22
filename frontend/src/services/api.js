@@ -78,6 +78,12 @@ export function addComment(postId, payload) {
   });
 }
 
+export function sharePost(postId, userId) {
+  return request(`/posts/${postId}/share?userId=${userId}`, {
+    method: 'POST',
+  });
+}
+
 export function fetchUserGroups(userId) {
   return request(`/users/${userId}/groups`);
 }
@@ -140,6 +146,35 @@ export function fetchUserProfile(userId) {
   return request(`/users/${userId}/profile`);
 }
 
-export function fetchUserPosts(userId) {
-  return request(`/users/${userId}/posts`);
+export function fetchUserPosts(userId, currentUserId) {
+  const query = currentUserId ? `?currentUserId=${currentUserId}` : '';
+  return request(`/users/${userId}/posts${query}`);
+}
+
+export function fetchAdminOverview() {
+  return request('/admin/overview');
+}
+
+export function fetchAdminUsers() {
+  return request('/admin/users');
+}
+
+export function fetchAdminGroups() {
+  return request('/admin/groups');
+}
+
+export function fetchAdminPosts() {
+  return request('/admin/posts');
+}
+
+export function seedSampleData() {
+  return request('/dev/seed', {
+    method: 'POST',
+  });
+}
+
+export function seedDemoData() {
+  return request('/dev/seed-demo', {
+    method: 'POST',
+  });
 }

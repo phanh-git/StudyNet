@@ -112,13 +112,21 @@ public class FeedController {
     }
 
     @GetMapping("/users/{userId}/posts")
-    public List<FeedPostResponse> getUserPosts(@PathVariable Long userId) {
-        return feedService.getPostsByUser(userId);
+    public List<FeedPostResponse> getUserPosts(
+        @PathVariable Long userId,
+        @RequestParam(required = false) Long currentUserId
+    ) {
+        return feedService.getPostsByUser(userId, currentUserId);
     }
 
     @PostMapping("/posts/{postId}/reactions")
     public ReactionSummaryResponse reactToPost(@PathVariable Long postId, @Valid @RequestBody ReactionRequest request) {
         return feedService.reactToPost(postId, request);
+    }
+
+    @PostMapping("/posts/{postId}/share")
+    public FeedPostResponse sharePost(@PathVariable Long postId, @RequestParam Long userId) {
+        return feedService.sharePost(postId, userId);
     }
 
     @GetMapping("/posts/{postId}/comments")

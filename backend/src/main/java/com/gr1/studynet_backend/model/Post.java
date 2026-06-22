@@ -15,8 +15,14 @@ public class Post {
     @Column(columnDefinition = "TEXT")
     private String content;
 
-    @Column(length = 500)
+    @Column(columnDefinition = "TEXT")
     private String fileUrl;
+
+    @Column(length = 255)
+    private String fileName;
+
+    @Column(length = 120)
+    private String fileType;
 
     @Column(length = 20)
     private String type; // "QUESTION", "DISCUSSION", "MATERIAL", "ANNOUNCEMENT"
@@ -32,6 +38,10 @@ public class Post {
     @ManyToOne
     @JoinColumn(name = "subject_id") // Cho phép null nếu không tag môn học
     private Subject subject;
+
+    @ManyToOne
+    @JoinColumn(name = "shared_post_id")
+    private Post sharedPost;
 
     private LocalDateTime createdAt;
 
