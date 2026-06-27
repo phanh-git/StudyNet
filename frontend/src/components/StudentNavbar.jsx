@@ -45,7 +45,15 @@ export default function StudentNavbar({ searchValue, onSearchValueChange, onSear
         item.id === notification.id ? { ...item, isRead: true } : item
       )));
       setUnreadCount((count) => Math.max(0, count - 1));
-      markNotificationAsRead(user.id, notification.id).catch(() => {});
+
+      try {
+        await markNotificationAsRead(user.id, notification.id);
+      } catch {
+        setNotifications((current) => current.map((item) => (
+          item.id === notification.id ? { ...item, isRead: false } : item
+        )));
+        setUnreadCount((count) => count + 1);
+      }
     }
 
     setNotificationsOpen(false);

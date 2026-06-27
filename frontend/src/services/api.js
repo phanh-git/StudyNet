@@ -60,6 +60,19 @@ export function createPost(payload) {
   });
 }
 
+export function updatePost(postId, payload) {
+  return request(`/posts/${postId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deletePost(postId, userId) {
+  return request(`/posts/${postId}?userId=${userId}`, {
+    method: 'DELETE',
+  });
+}
+
 export function reactToPost(postId, payload) {
   return request(`/posts/${postId}/reactions`, {
     method: 'POST',
@@ -78,9 +91,10 @@ export function addComment(postId, payload) {
   });
 }
 
-export function sharePost(postId, userId) {
-  return request(`/posts/${postId}/share?userId=${userId}`, {
+export function sharePost(postId, payload) {
+  return request(`/posts/${postId}/share`, {
     method: 'POST',
+    body: JSON.stringify(payload),
   });
 }
 
@@ -93,6 +107,8 @@ export function fetchAllGroups(params = {}) {
   if (params.userId) searchParams.set('userId', params.userId);
   if (params.subjectId) searchParams.set('subjectId', params.subjectId);
   if (params.keyword?.trim()) searchParams.set('keyword', params.keyword.trim());
+  if (params.page) searchParams.set('page', params.page);
+  if (params.size) searchParams.set('size', params.size);
 
   const query = searchParams.toString();
   return request(`/groups${query ? `?${query}` : ''}`);
@@ -113,6 +129,19 @@ export function createGroup(payload) {
 export function joinGroup(groupId, userId) {
   return request(`/groups/${groupId}/join?userId=${userId}`, {
     method: 'POST',
+  });
+}
+
+export function approveGroupMember(groupId, targetUserId, userId) {
+  return request(`/groups/${groupId}/members/${targetUserId}/approve?userId=${userId}`, {
+    method: 'PATCH',
+  });
+}
+
+export function rejectGroupMember(groupId, targetUserId, payload) {
+  return request(`/groups/${groupId}/members/${targetUserId}/reject`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
   });
 }
 

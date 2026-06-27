@@ -7,10 +7,13 @@ import com.gr1.studynet_backend.dto.CommentResponse;
 import com.gr1.studynet_backend.dto.FeedPostResponse;
 import com.gr1.studynet_backend.dto.GroupDetailResponse;
 import com.gr1.studynet_backend.dto.GroupMemberResponse;
+import com.gr1.studynet_backend.dto.GroupPageResponse;
 import com.gr1.studynet_backend.dto.GroupResponse;
 import com.gr1.studynet_backend.dto.NotificationResponse;
 import com.gr1.studynet_backend.dto.ReactionRequest;
 import com.gr1.studynet_backend.dto.ReactionSummaryResponse;
+import com.gr1.studynet_backend.dto.SharePostRequest;
+import com.gr1.studynet_backend.dto.UpdatePostRequest;
 import com.gr1.studynet_backend.model.Comment;
 import com.gr1.studynet_backend.model.Group;
 import com.gr1.studynet_backend.model.GroupMember;
@@ -32,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.text.Normalizer;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -82,20 +86,38 @@ public class FeedService {
         return notificationRepository.countByReceiverIdAndIsReadFalse(userId);
     }
 
-    public List<GroupResponse> getAllGroups(Long userId, Long subjectId, String keyword) {
+    public GroupPageResponse getAllGroups(Long userId, Long subjectId, String keyword, int page, int size) {
         List<Group> groups = subjectId != null
             ? groupRepository.findBySubjectId(subjectId)
             : groupRepository.findAll();
 
         String normalizedKeyword = keyword == null ? "" : keyword.trim().toLowerCase(Locale.ROOT);
 
-        return groups.stream()
+        List<GroupResponse> filteredGroups = groups.stream()
             .filter(group -> normalizedKeyword.isBlank()
                 || contains(group.getName(), normalizedKeyword)
                 || contains(group.getDescription(), normalizedKeyword)
                 || (group.getSubject() != null && contains(group.getSubject().getName(), normalizedKeyword)))
             .map(group -> mapGroup(group, userId, null))
             .toList();
+
+        int safeSize = Math.max(1, size);
+        int safePage = Math.max(1, page);
+        int totalItems = filteredGroups.size();
+        int totalPages = Math.max(1, (int) Math.ceil((double) totalItems / safeSize));
+        int boundedPage = Math.min(safePage, totalPages);
+        int fromIndex = Math.min((boundedPage - 1) * safeSize, totalItems);
+        int toIndex = Math.min(fromIndex + safeSize, totalItems);
+        long joinedCount = filteredGroups.stream().filter(GroupResponse::isJoined).count();
+
+        return new GroupPageResponse(
+            filteredGroups.subList(fromIndex, toIndex),
+            boundedPage,
+            safeSize,
+            totalPages,
+            totalItems,
+            joinedCount
+        );
     }
 
     @Transactional
@@ -137,6 +159,7 @@ public class FeedService {
             member.setRole("MEMBER");
             member.setMembershipStatus("PENDING");
             groupMemberRepository.save(member);
+            notifyGroupAdminsAboutJoinRequest(group, user);
         }
 
         return mapGroup(group, userId, existing != null ? existing.getRole() : "MEMBER");
@@ -193,7 +216,18 @@ public class FeedService {
                 member.getUser().getId(),
                 member.getUser().getFullName(),
                 member.getUser().getSchool(),
-                member.getRole()
+                member.getRole(),
+                member.getMembershipStatus()
+            ))
+            .toList();
+
+        List<GroupMemberResponse> pendingMembers = groupMemberRepository.findByGroupIdAndMembershipStatus(groupId, "PENDING").stream()
+            .map(member -> new GroupMemberResponse(
+                member.getUser().getId(),
+                member.getUser().getFullName(),
+                member.getUser().getSchool(),
+                member.getRole(),
+                member.getMembershipStatus()
             ))
             .toList();
 
@@ -204,8 +238,53 @@ public class FeedService {
         return new GroupDetailResponse(
             mapGroup(group, userId, null),
             members,
+            pendingMembers,
             posts
         );
+    }
+
+    @Transactional
+    public void approveGroupMember(Long groupId, Long adminUserId, Long targetUserId) {
+        GroupMember adminMembership = groupMemberRepository.findByUserIdAndGroupId(adminUserId, groupId)
+            .orElseThrow(() -> new IllegalArgumentException("Bạn không có quyền duyệt thành viên nhóm này."));
+        if (!"GROUP_ADMIN".equalsIgnoreCase(adminMembership.getRole())) {
+            throw new IllegalArgumentException("Chỉ admin nhóm mới có thể duyệt thành viên.");
+        }
+
+        GroupMember pendingMembership = groupMemberRepository.findByUserIdAndGroupId(targetUserId, groupId)
+            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy yêu cầu tham gia nhóm."));
+        if (!"PENDING".equalsIgnoreCase(pendingMembership.getMembershipStatus())) {
+            throw new IllegalArgumentException("Yêu cầu này không còn ở trạng thái chờ duyệt.");
+        }
+
+        pendingMembership.setMembershipStatus("APPROVED");
+        pendingMembership.setRole("MEMBER");
+        groupMemberRepository.save(pendingMembership);
+    }
+
+    @Transactional
+    public void rejectGroupMember(Long groupId, Long adminUserId, Long targetUserId, String reason) {
+        GroupMember adminMembership = groupMemberRepository.findByUserIdAndGroupId(adminUserId, groupId)
+            .orElseThrow(() -> new IllegalArgumentException("Bạn không có quyền từ chối thành viên nhóm này."));
+        if (!"GROUP_ADMIN".equalsIgnoreCase(adminMembership.getRole())) {
+            throw new IllegalArgumentException("Chỉ admin nhóm mới có thể từ chối thành viên.");
+        }
+
+        GroupMember pendingMembership = groupMemberRepository.findByUserIdAndGroupId(targetUserId, groupId)
+            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy yêu cầu tham gia nhóm."));
+        if (!"PENDING".equalsIgnoreCase(pendingMembership.getMembershipStatus())) {
+            throw new IllegalArgumentException("Yêu cầu này không còn ở trạng thái chờ duyệt.");
+        }
+
+        Notification notification = createNotification(
+            pendingMembership.getUser(),
+            adminMembership.getUser(),
+            "GROUP_REQUEST_REJECTED",
+            "Yêu cầu tham gia nhóm " + pendingMembership.getGroup().getName() + " của bạn đã bị từ chối. Lý do: " + reason.trim(),
+            "/groups"
+        );
+        notificationRepository.save(notification);
+        groupMemberRepository.delete(pendingMembership);
     }
 
     public FeedPostResponse createPost(CreatePostRequest request) {
@@ -249,6 +328,31 @@ public class FeedService {
         return mapPost(savedPost, user.getId());
     }
 
+    @Transactional
+    public FeedPostResponse updatePost(Long postId, UpdatePostRequest request) {
+        Post post = postRepository.findById(postId)
+            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài viết."));
+
+        if (!post.getUser().getId().equals(request.getUserId())) {
+            throw new IllegalArgumentException("Chỉ người đăng mới có thể chỉnh sửa bài viết này.");
+        }
+
+        boolean hasContent = request.getContent() != null && !request.getContent().trim().isBlank();
+        boolean hasAttachment = request.getFileUrl() != null && !request.getFileUrl().trim().isBlank();
+        if (!hasContent && !hasAttachment) {
+            throw new IllegalArgumentException("Bài viết cần có nội dung hoặc ít nhất một tệp đính kèm.");
+        }
+
+        post.setContent(hasContent ? request.getContent().trim() : null);
+        post.setFileUrl(hasAttachment ? request.getFileUrl() : null);
+        post.setFileName(hasAttachment ? request.getFileName() : null);
+        post.setFileType(hasAttachment ? request.getFileType() : null);
+        post.setType(request.getType().trim().toUpperCase(Locale.ROOT));
+
+        Post savedPost = postRepository.save(post);
+        return mapPost(savedPost, request.getUserId());
+    }
+
     public List<NotificationResponse> getNotifications(Long userId) {
         return notificationRepository.findByReceiverIdOrderByCreatedAtDesc(userId).stream()
             .map(notification -> new NotificationResponse(
@@ -263,6 +367,7 @@ public class FeedService {
             .toList();
     }
 
+    @Transactional
     public void markNotificationAsRead(Long userId, Long notificationId) {
         Notification notification = notificationRepository.findByIdAndReceiverId(notificationId, userId)
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy thông báo."));
@@ -304,28 +409,52 @@ public class FeedService {
         );
     }
 
-    public FeedPostResponse sharePost(Long postId, Long userId) {
+    public FeedPostResponse sharePost(Long postId, SharePostRequest request) {
         Post sourcePost = postRepository.findById(postId)
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài viết."));
-        User user = userRepository.findById(userId)
+        User user = userRepository.findById(request.getUserId())
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng."));
 
-        if (postRepository.existsByUserIdAndSharedPostId(userId, sourcePost.getId())) {
+        if (postRepository.existsByUserIdAndSharedPostId(user.getId(), sourcePost.getId())) {
             throw new IllegalArgumentException("Bạn đã chia sẻ bài viết này về trang cá nhân rồi.");
         }
 
+        String normalizedContent = request.getContent() != null && !request.getContent().trim().isBlank()
+            ? request.getContent().trim()
+            : null;
+
         Post sharedPost = new Post();
-        sharedPost.setContent(sourcePost.getContent());
-        sharedPost.setFileUrl(sourcePost.getFileUrl());
-        sharedPost.setFileName(sourcePost.getFileName());
-        sharedPost.setFileType(sourcePost.getFileType());
+        sharedPost.setContent(normalizedContent);
+        sharedPost.setFileUrl(null);
+        sharedPost.setFileName(null);
+        sharedPost.setFileType(null);
         sharedPost.setType(sourcePost.getType());
         sharedPost.setUser(user);
         sharedPost.setSubject(sourcePost.getSubject());
         sharedPost.setSharedPost(sourcePost);
 
         Post savedPost = postRepository.save(sharedPost);
-        return mapPost(savedPost, userId);
+        return mapPost(savedPost, user.getId());
+    }
+
+    @Transactional
+    public void deletePost(Long postId, Long userId) {
+        Post post = postRepository.findById(postId)
+            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài viết."));
+
+        if (!post.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("Chỉ người đăng mới có thể xóa bài viết này.");
+        }
+
+        List<Post> sharedCopies = postRepository.findBySharedPostIdIn(Collections.singletonList(postId));
+        if (!sharedCopies.isEmpty()) {
+            sharedCopies.forEach(sharedCopy -> sharedCopy.setSharedPost(null));
+            postRepository.saveAll(sharedCopies);
+        }
+
+        reactionRepository.deleteByPostIdIn(Collections.singletonList(postId));
+        commentRepository.deleteByPostIdIn(Collections.singletonList(postId));
+        postRepository.delete(post);
     }
 
     public List<CommentResponse> getCommentsByPost(Long postId) {
@@ -380,6 +509,36 @@ public class FeedService {
             return null;
         }
         return value.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private void notifyGroupAdminsAboutJoinRequest(Group group, User requester) {
+        List<GroupMember> adminMembers = groupMemberRepository.findByGroupIdAndMembershipStatus(group.getId(), "APPROVED").stream()
+            .filter(member -> "GROUP_ADMIN".equalsIgnoreCase(member.getRole()))
+            .toList();
+
+        if (adminMembers.isEmpty()) {
+            return;
+        }
+
+        String targetUrl = "/groups/" + group.getId();
+        String message = requester.getFullName() + " vừa gửi yêu cầu tham gia nhóm " + group.getName() + ".";
+
+        List<Notification> notifications = adminMembers.stream()
+            .map(member -> createNotification(member.getUser(), requester, "GROUP_REQUEST", message, targetUrl))
+            .toList();
+
+        notificationRepository.saveAll(notifications);
+    }
+
+    private Notification createNotification(User receiver, User sender, String type, String message, String targetUrl) {
+        Notification notification = new Notification();
+        notification.setReceiver(receiver);
+        notification.setSender(sender);
+        notification.setType(type);
+        notification.setMessage(message);
+        notification.setTargetUrl(targetUrl);
+        notification.setIsRead(false);
+        return notification;
     }
 
     private Subject resolveSubject(Long subjectId, String customSubjectName) {

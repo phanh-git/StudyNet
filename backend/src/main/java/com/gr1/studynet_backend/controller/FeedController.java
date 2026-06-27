@@ -2,6 +2,7 @@ package com.gr1.studynet_backend.controller;
 
 import com.gr1.studynet_backend.dto.FeedPostResponse;
 import com.gr1.studynet_backend.dto.GroupDetailResponse;
+import com.gr1.studynet_backend.dto.GroupPageResponse;
 import com.gr1.studynet_backend.dto.GroupResponse;
 import com.gr1.studynet_backend.dto.NotificationSummaryResponse;
 import com.gr1.studynet_backend.dto.CreateGroupRequest;
@@ -12,6 +13,9 @@ import com.gr1.studynet_backend.dto.NotificationResponse;
 import com.gr1.studynet_backend.model.Subject;
 import com.gr1.studynet_backend.dto.ReactionRequest;
 import com.gr1.studynet_backend.dto.ReactionSummaryResponse;
+import com.gr1.studynet_backend.dto.RejectGroupMemberRequest;
+import com.gr1.studynet_backend.dto.SharePostRequest;
+import com.gr1.studynet_backend.dto.UpdatePostRequest;
 import com.gr1.studynet_backend.service.FeedService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -75,12 +79,14 @@ public class FeedController {
     }
 
     @GetMapping("/groups")
-    public List<GroupResponse> getGroups(
+    public GroupPageResponse getGroups(
         @RequestParam(required = false) Long userId,
         @RequestParam(required = false) Long subjectId,
-        @RequestParam(required = false) String keyword
+        @RequestParam(required = false) String keyword,
+        @RequestParam(defaultValue = "1") int page,
+        @RequestParam(defaultValue = "6") int size
     ) {
-        return feedService.getAllGroups(userId, subjectId, keyword);
+        return feedService.getAllGroups(userId, subjectId, keyword, page, size);
     }
 
     @PostMapping("/groups")
@@ -99,6 +105,24 @@ public class FeedController {
     @PostMapping("/groups/{groupId}/join")
     public GroupResponse joinGroup(@PathVariable Long groupId, @RequestParam Long userId) {
         return feedService.joinGroup(groupId, userId);
+    }
+
+    @PatchMapping("/groups/{groupId}/members/{targetUserId}/approve")
+    public void approveGroupMember(
+        @PathVariable Long groupId,
+        @PathVariable Long targetUserId,
+        @RequestParam Long userId
+    ) {
+        feedService.approveGroupMember(groupId, userId, targetUserId);
+    }
+
+    @PatchMapping("/groups/{groupId}/members/{targetUserId}/reject")
+    public void rejectGroupMember(
+        @PathVariable Long groupId,
+        @PathVariable Long targetUserId,
+        @Valid @RequestBody RejectGroupMemberRequest request
+    ) {
+        feedService.rejectGroupMember(groupId, request.getUserId(), targetUserId, request.getReason());
     }
 
     @DeleteMapping("/groups/{groupId}/members")
@@ -125,8 +149,18 @@ public class FeedController {
     }
 
     @PostMapping("/posts/{postId}/share")
-    public FeedPostResponse sharePost(@PathVariable Long postId, @RequestParam Long userId) {
-        return feedService.sharePost(postId, userId);
+    public FeedPostResponse sharePost(@PathVariable Long postId, @Valid @RequestBody SharePostRequest request) {
+        return feedService.sharePost(postId, request);
+    }
+
+    @PatchMapping("/posts/{postId}")
+    public FeedPostResponse updatePost(@PathVariable Long postId, @Valid @RequestBody UpdatePostRequest request) {
+        return feedService.updatePost(postId, request);
+    }
+
+    @DeleteMapping("/posts/{postId}")
+    public void deletePost(@PathVariable Long postId, @RequestParam Long userId) {
+        feedService.deletePost(postId, userId);
     }
 
     @GetMapping("/posts/{postId}/comments")

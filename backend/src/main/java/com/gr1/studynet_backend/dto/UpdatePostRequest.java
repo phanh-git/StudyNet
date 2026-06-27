@@ -1,0 +1,22 @@
+package com.gr1.studynet_backend.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.Data;
+
+@Data
+public class UpdatePostRequest {
+    private String content;
+
+    private String fileUrl;
+
+    private String fileName;
+
+    private String fileType;
+
+    @NotBlank(message = "Loại bài viết là bắt buộc")
+    private String type;
+
+    @NotNull(message = "Người chỉnh sửa là bắt buộc")
+    private Long userId;
+}

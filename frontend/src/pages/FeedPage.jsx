@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CircleHelp, FileImage, FileText, MessageCircle, Megaphone, Paperclip, Plus, Heart, Send, Share2, ThumbsUp, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import PostOwnerMenu from '../components/PostOwnerMenu';
+import SharePostModal from '../components/SharePostModal';
 import SharedPostPreview, { shouldRenderPostBody } from '../components/SharedPostPreview';
 import StudentNavbar from '../components/StudentNavbar';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
-import { addComment, createPost, fetchComments, fetchFeed, fetchSubjects, fetchUserGroups, reactToPost, sharePost } from '../services/api';
+import { addComment, createPost, deletePost, fetchComments, fetchFeed, fetchSubjects, fetchUserGroups, reactToPost, sharePost, updatePost } from '../services/api';
 import { isImageAttachment, readFileAsDataUrl } from '../utils/postAttachments';
 
 const POST_TYPES = [
@@ -46,6 +48,9 @@ export default function FeedPage() {
   const [expandedComments, setExpandedComments] = useState({});
   const [commentsByPost, setCommentsByPost] = useState({});
   const [commentInputs, setCommentInputs] = useState({});
+  const [shareModalPost, setShareModalPost] = useState(null);
+  const [shareContent, setShareContent] = useState('');
+  const [isSharingPost, setIsSharingPost] = useState(false);
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
@@ -62,6 +67,26 @@ export default function FeedPage() {
 
   const typeLabel = (type) => POST_TYPES.find((item) => item.value === type)?.label ?? 'Post';
 
+  const loadFeed = async () => {
+    setIsLoading(true);
+    setPageError('');
+
+    try {
+      const nextPosts = await fetchFeed({
+        subjectId: selectedSubjectId,
+        keyword: searchKeyword,
+        type: postType,
+        sortBy,
+        currentUserId: user.id,
+      });
+      setPosts(nextPosts);
+    } catch (error) {
+      setPageError(error.message || 'Không thể tải bảng tin.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     Promise.all([fetchSubjects(), fetchUserGroups(user.id)])
       .then(([subjectItems, userGroups]) => {
@@ -74,21 +99,7 @@ export default function FeedPage() {
   }, [user.id]);
 
   useEffect(() => {
-    setIsLoading(true);
-    setPageError('');
-
-    fetchFeed({
-      subjectId: selectedSubjectId,
-      keyword: searchKeyword,
-      type: postType,
-      sortBy,
-      currentUserId: user.id,
-    })
-      .then(setPosts)
-      .catch((error) => {
-        setPageError(error.message || 'Không thể tải bảng tin.');
-      })
-      .finally(() => setIsLoading(false));
+    loadFeed();
   }, [selectedSubjectId, searchKeyword, postType, sortBy]);
 
   const activeSubjectName = useMemo(
@@ -214,21 +225,66 @@ export default function FeedPage() {
     setExpandedComments((current) => ({ ...current, [postId]: true }));
   };
 
-  const handleSharePost = async (postId) => {
+  const openShareModal = (post) => {
+    setShareModalPost(post);
+    setShareContent('');
+    setPageError('');
+  };
+
+  const closeShareModal = () => {
+    if (isSharingPost) return;
+    setShareModalPost(null);
+    setShareContent('');
+  };
+
+  const handleSharePost = async () => {
+    if (!shareModalPost) return;
+
     try {
-      const sharedPost = await sharePost(postId, user.id);
-      setPosts((current) => [
-        sharedPost,
-        ...current.map((post) => (
-          post.id === (sharedPost.sharedPostId ?? sharedPost.id)
-            ? { ...post, shareCount: sharedPost.shareCount, currentUserShared: true }
-            : post
-        )),
-      ]);
+      setIsSharingPost(true);
+      await sharePost(shareModalPost.id, {
+        userId: user.id,
+        content: shareContent,
+      });
+      await loadFeed();
       setActionMessage('Bài viết đã được chia sẻ về trang cá nhân của bạn.');
       setPageError('');
+      setShareModalPost(null);
+      setShareContent('');
     } catch (error) {
       setPageError(error.message || 'Không thể chia sẻ bài viết lúc này.');
+    } finally {
+      setIsSharingPost(false);
+    }
+  };
+
+  const handleUpdatePost = async (postId, payload) => {
+    try {
+      await updatePost(postId, {
+        ...payload,
+        userId: user.id,
+      });
+      await loadFeed();
+      setActionMessage('Bài viết đã được cập nhật.');
+      setPageError('');
+    } catch (error) {
+      setPageError(error.message || 'Không thể chỉnh sửa bài viết lúc này.');
+      throw error;
+    }
+  };
+
+  const handleDeletePost = async (postId) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa bài viết này không?')) {
+      return;
+    }
+
+    try {
+      await deletePost(postId, user.id);
+      await loadFeed();
+      setActionMessage('Bài viết đã được xóa.');
+      setPageError('');
+    } catch (error) {
+      setPageError(error.message || 'Không thể xóa bài viết lúc này.');
     }
   };
 
@@ -483,6 +539,15 @@ export default function FeedPage() {
                       {post.authorSchool || t('feed.studentLabel')} · {formatTime(post.createdAt)}
                     </p>
                   </div>
+                  {post.authorId === user.id && (
+                    <PostOwnerMenu
+                      post={post}
+                      typeOptions={POST_TYPES.filter((item) => item.value !== 'ALL')}
+                      renderAttachment={renderAttachment}
+                      onSave={(payload) => handleUpdatePost(post.id, payload)}
+                      onDelete={() => handleDeletePost(post.id)}
+                    />
+                  )}
                 </div>
 
                 {/* {post.shared && (
@@ -532,7 +597,7 @@ export default function FeedPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => !post.currentUserShared && handleSharePost(post.id)}
+                      onClick={() => !post.currentUserShared && openShareModal(post)}
                       className={`flex items-center gap-2 rounded-full px-3 py-2 font-semibold transition ${
                         post.currentUserShared
                           ? 'bg-emerald-50 text-emerald-600'
@@ -594,6 +659,20 @@ export default function FeedPage() {
           )}
         </section>
       </main>
+
+      <SharePostModal
+        open={Boolean(shareModalPost)}
+        post={shareModalPost}
+        shareContent={shareContent}
+        onShareContentChange={setShareContent}
+        onClose={closeShareModal}
+        onSubmit={handleSharePost}
+        isSubmitting={isSharingPost}
+        formatTime={formatTime}
+        typeLabel={typeLabel}
+        renderAttachment={renderAttachment}
+        onAuthorClick={(authorId) => navigate(`/profile/${authorId}`)}
+      />
     </div>
   );
 }

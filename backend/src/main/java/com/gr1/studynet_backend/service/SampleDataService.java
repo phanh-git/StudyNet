@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 import java.util.Optional;
 
 @Service
@@ -142,6 +143,7 @@ public class SampleDataService implements CommandLineRunner {
     public void appendDemoData() {
         seedIfNeeded();
 
+        Subject math = findSubject("MATH");
         Subject chemistry = findSubject("CHEM");
         Subject english = findSubject("ENG");
         Subject programming = findSubject("CS");
@@ -153,10 +155,30 @@ public class SampleDataService implements CommandLineRunner {
 
         User huong = ensureUser("Phạm Thu Hương", "huong@studynet.com", "ĐH Kinh tế Quốc dân", "Tiếng Anh thương mại", "USER", "12345678");
         User minh = ensureUser("Đỗ Quang Minh", "minh@studynet.com", "ĐH Bách Khoa Đà Nẵng", "Kỹ thuật hóa học", "USER", "12345678");
+        User lan = ensureUser("Vũ Hải Lan", "lan@studynet.com", "ĐH Ngoại thương", "Tài chính quốc tế", "USER", "12345678");
+        User tung = ensureUser("Ngô Đức Tùng", "tung@studynet.com", "ĐH Công nghệ", "Khoa học dữ liệu", "USER", "12345678");
+        User thao = ensureUser("Nguyễn Phương Thảo", "thao@studynet.com", "ĐH Y Dược", "Công nghệ sinh học", "USER", "12345678");
+        User phuc = ensureUser("Trịnh Gia Phúc", "phuc@studynet.com", "ĐH Giao thông Vận tải", "Kỹ thuật cơ điện tử", "USER", "12345678");
+        User mai = ensureUser("Lý Mai Anh", "mai@studynet.com", "Học viện Ngân hàng", "Kế toán", "USER", "12345678");
+        User khoa = ensureUser("Bùi Đăng Khoa", "khoa@studynet.com", "ĐH Sư phạm Hà Nội", "Sư phạm Toán", "USER", "12345678");
+        User quynh = ensureUser("Trần Ngọc Quỳnh", "quynh@studynet.com", "ĐH Hà Nội", "Ngôn ngữ Anh", "USER", "12345678");
+        User longUser = ensureUser("Phạm Hoàng Long", "long@studynet.com", "ĐH FPT", "Kỹ thuật phần mềm", "USER", "12345678");
 
         Group chemistryGroup = ensureGroup("Phòng Lab Hóa học", "Nhóm chia sẻ báo cáo thí nghiệm, kiến thức hóa vô cơ và hữu cơ.", "PUBLIC", minh, chemistry);
         Group englishGroup = ensureGroup("English For Study", "Luyện kỹ năng đọc tài liệu học thuật và thuyết trình bằng tiếng Anh.", "PUBLIC", huong, english);
         Group algorithmsGroup = ensureGroup("Thuật toán từ cơ bản đến nâng cao", "Nơi luyện LeetCode, cấu trúc dữ liệu và phỏng vấn kỹ thuật.", "PUBLIC", an, programming);
+        Group mathGroup = ensureGroup("Bứt tốc Giải tích 1", "Tổng hợp bài tập giới hạn, đạo hàm và tích phân cho sinh viên năm nhất.", "PUBLIC", khoa, math);
+        Group statisticsGroup = ensureGroup("Xác suất thống kê dễ hiểu", "Ôn tập xác suất, biến ngẫu nhiên và bài tập có lời giải từng bước.", "PUBLIC", binh, math);
+        Group oopGroup = ensureGroup("OOP Java từ nền tảng", "Luyện OOP, design pattern cơ bản và các bài lab Java hướng đối tượng.", "PUBLIC", longUser, programming);
+        Group webGroup = ensureGroup("Web Dev Study Hub", "Trao đổi React, Spring Boot, REST API và triển khai đồ án web.", "PUBLIC", tung, programming);
+        Group pythonGroup = ensureGroup("Python ứng dụng cho sinh viên", "Chia sẻ notebook, xử lý dữ liệu và automation bằng Python.", "PUBLIC", tung, programming);
+        Group physicsExamGroup = ensureGroup("Vật lý đại cương 1 - Luyện đề", "Kho đề cương, đề cũ và livestream chữa bài trước kỳ thi.", "PUBLIC", nam, physics);
+        Group chemistryExamGroup = ensureGroup("Hóa hữu cơ ôn thi cuối kỳ", "Nơi hỏi đáp phản ứng, cơ chế và mẹo làm bài nhanh phần hữu cơ.", "PUBLIC", thao, chemistry);
+        Group speakingGroup = ensureGroup("Speaking Club for Students", "Luyện speaking theo chủ đề học thuật, phản xạ và presentation.", "PUBLIC", quynh, english);
+        Group readingGroup = ensureGroup("Reading Academic Papers", "Cùng nhau đọc paper, note từ vựng và kỹ thuật skim-scan.", "PUBLIC", huong, english);
+        Group projectGroup = ensureGroup("Đồ án công nghệ thông tin K17", "Kết nối sinh viên làm đồ án, chia task và review tiến độ hàng tuần.", "PUBLIC", phuc, programming);
+        Group calculusGroup = ensureGroup("Toán cao cấp cho dân kỹ thuật", "Tập trung đại số tuyến tính, giải tích nhiều biến và ứng dụng kỹ thuật.", "PUBLIC", khoa, math);
+        Group internshipGroup = ensureGroup("CV - Phỏng vấn - Intern IT", "Chia sẻ kinh nghiệm viết CV, luyện phỏng vấn và săn thực tập IT.", "PUBLIC", longUser, programming);
 
         ensureMembership(minh, chemistryGroup, "GROUP_ADMIN");
         ensureMembership(huong, englishGroup, "GROUP_ADMIN");
@@ -165,6 +187,36 @@ public class SampleDataService implements CommandLineRunner {
         ensureMembership(binh, chemistryGroup, "MEMBER");
         ensureMembership(nam, algorithmsGroup, "MEMBER");
         ensureMembership(huong, algorithmsGroup, "MEMBER");
+        ensureMembership(khoa, mathGroup, "GROUP_ADMIN");
+        ensureMembership(binh, statisticsGroup, "GROUP_ADMIN");
+        ensureMembership(longUser, oopGroup, "GROUP_ADMIN");
+        ensureMembership(tung, webGroup, "GROUP_ADMIN");
+        ensureMembership(tung, pythonGroup, "GROUP_ADMIN");
+        ensureMembership(nam, physicsExamGroup, "GROUP_ADMIN");
+        ensureMembership(thao, chemistryExamGroup, "GROUP_ADMIN");
+        ensureMembership(quynh, speakingGroup, "GROUP_ADMIN");
+        ensureMembership(huong, readingGroup, "GROUP_ADMIN");
+        ensureMembership(phuc, projectGroup, "GROUP_ADMIN");
+        ensureMembership(khoa, calculusGroup, "GROUP_ADMIN");
+        ensureMembership(longUser, internshipGroup, "GROUP_ADMIN");
+        ensureMembership(an, oopGroup, "MEMBER");
+        ensureMembership(an, webGroup, "MEMBER");
+        ensureMembership(binh, chemistryExamGroup, "MEMBER");
+        ensureMembership(binh, mathGroup, "MEMBER");
+        ensureMembership(huong, speakingGroup, "MEMBER");
+        ensureMembership(huong, readingGroup, "MEMBER");
+        ensureMembership(minh, chemistryExamGroup, "MEMBER");
+        ensureMembership(nam, physicsExamGroup, "MEMBER");
+        ensureMembership(lan, speakingGroup, "MEMBER");
+        ensureMembership(lan, readingGroup, "MEMBER");
+        ensureMembership(mai, statisticsGroup, "MEMBER");
+        ensureMembership(mai, mathGroup, "MEMBER");
+        ensureMembership(quynh, englishGroup, "MEMBER");
+        ensureMembership(longUser, projectGroup, "MEMBER");
+        ensureMembership(phuc, webGroup, "MEMBER");
+        ensureMembership(tung, algorithmsGroup, "MEMBER");
+        ensureMembership(thao, chemistryGroup, "MEMBER");
+        ensureMembership(khoa, calculusGroup, "MEMBER");
 
         Post postOne = ensurePost(
             huong,
@@ -206,10 +258,17 @@ public class SampleDataService implements CommandLineRunner {
         ensureComment(postTwo, binh, "Mình hay chia theo nhóm chức, lát nữa mình gửi sơ đồ cho bạn.");
         ensureComment(postThree, huong, "Mình tham gia, 8h tối mình online.");
         ensureComment(postFour, binh, "Nhớ gửi link cho mình với nhé.");
+        ensurePost(khoa, mathGroup, math, "MATERIAL", "Mình vừa soạn bộ bài tập Giải tích 1 kèm lời giải ngắn gọn để mọi người ôn giữa kỳ.");
+        ensurePost(longUser, oopGroup, programming, "DISCUSSION", "Có bạn nào muốn cùng refactor project Java theo MVC để luyện code sạch không?");
+        ensurePost(tung, webGroup, programming, "QUESTION", "Mọi người đang deploy Spring Boot + React miễn phí bằng nền tảng nào ổn nhất hiện nay?");
+        ensurePost(quynh, speakingGroup, english, "ANNOUNCEMENT", "Tối thứ 5 nhóm mình sẽ có buổi mock presentation 15 phút cho từng bạn.");
+        ensurePost(nam, physicsExamGroup, physics, "MATERIAL", "Mình đã gom 3 đề cuối kỳ Vật lý đại cương có đáp án để mọi người tải về.");
 
         ensureNotification(an, huong, "GROUP_UPDATE", "Nhóm English For Study vừa có tài liệu mới dành cho bạn.", "/groups");
         ensureNotification(binh, minh, "COMMENT", "Đỗ Quang Minh vừa phản hồi thảo luận Hóa học mà bạn đang theo dõi.", "/feed");
         ensureNotification(nam, an, "INVITE", "Nguyễn Văn An vừa mời bạn tham gia buổi ôn thuật toán tối nay.", "/groups");
+        ensureNotification(longUser, tung, "GROUP_UPDATE", "Nhóm Web Dev Study Hub vừa có câu hỏi mới về deploy dự án.", "/groups");
+        ensureNotification(quynh, huong, "ANNOUNCEMENT", "Speaking Club for Students vừa lên lịch buổi mock presentation mới.", "/groups");
     }
 
     private void repairExistingData() {
@@ -259,6 +318,20 @@ public class SampleDataService implements CommandLineRunner {
         if (membersChanged) {
             groupMemberRepository.saveAll(members);
         }
+
+        List<Group> allGroups = groupRepository.findAll();
+        List<Notification> notifications = notificationRepository.findAll();
+        boolean notificationsChanged = false;
+        for (Notification notification : notifications) {
+            String inferredTargetUrl = inferNotificationTargetUrl(notification.getMessage(), allGroups);
+            if (inferredTargetUrl != null && !inferredTargetUrl.equals(notification.getTargetUrl())) {
+                notification.setTargetUrl(inferredTargetUrl);
+                notificationsChanged = true;
+            }
+        }
+        if (notificationsChanged) {
+            notificationRepository.saveAll(notifications);
+        }
     }
 
     private Subject inferGroupSubject(String groupName, Map<String, Subject> subjectByCode) {
@@ -287,6 +360,24 @@ public class SampleDataService implements CommandLineRunner {
             return "ANNOUNCEMENT";
         }
         return "DISCUSSION";
+    }
+
+    private String inferNotificationTargetUrl(String message, List<Group> groups) {
+        if (message == null || message.isBlank()) {
+            return null;
+        }
+
+        String normalizedMessage = message.toLowerCase(Locale.ROOT);
+        if (normalizedMessage.contains("nhóm")) {
+            for (Group group : groups) {
+                if (normalizedMessage.contains(group.getName().toLowerCase(Locale.ROOT))) {
+                    return "/groups/" + group.getId();
+                }
+            }
+            return "/groups";
+        }
+
+        return "/feed";
     }
 
     private Subject createSubject(String name, String code) {

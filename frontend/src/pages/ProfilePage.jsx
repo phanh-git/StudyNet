@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { BookOpen, GraduationCap, Heart, MessageCircle, Paperclip, School, Send, Share2, SquarePen, ThumbsUp } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import PostOwnerMenu from '../components/PostOwnerMenu';
+import SharePostModal from '../components/SharePostModal';
 import SharedPostPreview, { shouldRenderPostBody } from '../components/SharedPostPreview';
 import StudentNavbar from '../components/StudentNavbar';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
-import { addComment, fetchComments, fetchUserPosts, fetchUserProfile, reactToPost, sharePost } from '../services/api';
+import { addComment, deletePost, fetchComments, fetchUserPosts, fetchUserProfile, reactToPost, sharePost, updatePost } from '../services/api';
 import { isImageAttachment } from '../utils/postAttachments';
 
 function avatarFromName(name = 'StudyNet User') {
@@ -59,6 +61,9 @@ export default function ProfilePage() {
   const [expandedComments, setExpandedComments] = useState({});
   const [commentsByPost, setCommentsByPost] = useState({});
   const [commentInputs, setCommentInputs] = useState({});
+  const [shareModalPost, setShareModalPost] = useState(null);
+  const [shareContent, setShareContent] = useState('');
+  const [isSharingPost, setIsSharingPost] = useState(false);
   const targetUserId = Number(userId ?? user.id);
   const isOwnProfile = targetUserId === user.id;
 
@@ -81,6 +86,18 @@ export default function ProfilePage() {
       ANNOUNCEMENT: 'Thông báo',
     };
     return labels[type] ?? 'Bài viết';
+  };
+
+  const typeOptions = [
+    { value: 'DISCUSSION', label: 'Thảo luận' },
+    { value: 'QUESTION', label: 'Câu hỏi' },
+    { value: 'MATERIAL', label: 'Tài liệu' },
+    { value: 'ANNOUNCEMENT', label: 'Thông báo' },
+  ];
+
+  const loadProfilePosts = async () => {
+    const postResponse = await fetchUserPosts(targetUserId, user.id);
+    setPosts(postResponse);
   };
 
   useEffect(() => {
@@ -130,26 +147,66 @@ export default function ProfilePage() {
     )));
   };
 
-  const handleSharePost = async (postId) => {
+  const openShareModal = (post) => {
+    setShareModalPost(post);
+    setShareContent('');
+    setPageError('');
+  };
+
+  const closeShareModal = () => {
+    if (isSharingPost) return;
+    setShareModalPost(null);
+    setShareContent('');
+  };
+
+  const handleSharePost = async () => {
+    if (!shareModalPost) return;
+
     try {
-      const sharedPost = await sharePost(postId, user.id);
-      setPosts((current) => {
-        const updatedPosts = current.map((post) => (
-          post.id === (sharedPost.sharedPostId ?? sharedPost.id)
-            ? { ...post, shareCount: sharedPost.shareCount, currentUserShared: true }
-            : post
-        ));
-
-        if (isOwnProfile && sharedPost.authorId === targetUserId) {
-          return [sharedPost, ...updatedPosts];
-        }
-
-        return updatedPosts;
+      setIsSharingPost(true);
+      await sharePost(shareModalPost.id, {
+        userId: user.id,
+        content: shareContent,
       });
+      await loadProfilePosts();
       setActionMessage('Bài viết đã được chia sẻ về trang cá nhân của bạn.');
       setPageError('');
+      setShareModalPost(null);
+      setShareContent('');
     } catch (error) {
       setPageError(error.message || 'Không thể chia sẻ bài viết lúc này.');
+    } finally {
+      setIsSharingPost(false);
+    }
+  };
+
+  const handleUpdatePost = async (postId, payload) => {
+    try {
+      await updatePost(postId, {
+        ...payload,
+        userId: user.id,
+      });
+      await loadProfilePosts();
+      setActionMessage('Bài viết đã được cập nhật.');
+      setPageError('');
+    } catch (error) {
+      setPageError(error.message || 'Không thể chỉnh sửa bài viết lúc này.');
+      throw error;
+    }
+  };
+
+  const handleDeletePost = async (postId) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa bài viết này không?')) {
+      return;
+    }
+
+    try {
+      await deletePost(postId, user.id);
+      await loadProfilePosts();
+      setActionMessage('Bài viết đã được xóa.');
+      setPageError('');
+    } catch (error) {
+      setPageError(error.message || 'Không thể xóa bài viết lúc này.');
     }
   };
 
@@ -173,7 +230,7 @@ export default function ProfilePage() {
               <h1 className="mt-4 text-2xl font-bold text-slate-900">{profile?.fullName || user.fullName}</h1>
               <p className="mt-1 text-sm text-slate-500">{profile?.major || user.major}</p>
               {isOwnProfile && (
-                <button type="button" className="mt-5 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white">
+                <button type="button" className="mt-5 inline-flex items-center gap-2 rounded-full bg-indigo-600 px-5 py-3 text-sm font-semibold text-white">
                   <SquarePen className="h-4 w-4" />
                   Chỉnh sửa trang cá nhân
                 </button>
@@ -261,6 +318,15 @@ export default function ProfilePage() {
                   </div>
                   <p className="mt-1 text-sm text-slate-500">{formatPostTime(post.createdAt)}</p>
                 </div>
+                {post.authorId === user.id && (
+                  <PostOwnerMenu
+                    post={post}
+                    typeOptions={typeOptions}
+                    renderAttachment={renderAttachment}
+                    onSave={(payload) => handleUpdatePost(post.id, payload)}
+                    onDelete={() => handleDeletePost(post.id)}
+                  />
+                )}
               </div>
 
               {/* {post.shared && (
@@ -308,12 +374,12 @@ export default function ProfilePage() {
                     <MessageCircle className="h-4 w-4 text-indigo-500" />
                     {post.commentCount} bình luận
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => !post.currentUserShared && handleSharePost(post.id)}
-                    className={`flex items-center gap-2 rounded-full px-3 py-2 font-semibold transition ${
-                      post.currentUserShared
-                        ? 'bg-emerald-50 text-emerald-600'
+                    <button
+                      type="button"
+                      onClick={() => !post.currentUserShared && openShareModal(post)}
+                      className={`flex items-center gap-2 rounded-full px-3 py-2 font-semibold transition ${
+                        post.currentUserShared
+                          ? 'bg-emerald-50 text-emerald-600'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                   >
@@ -372,6 +438,20 @@ export default function ProfilePage() {
           ))}
         </section>
       </main>
+
+      <SharePostModal
+        open={Boolean(shareModalPost)}
+        post={shareModalPost}
+        shareContent={shareContent}
+        onShareContentChange={setShareContent}
+        onClose={closeShareModal}
+        onSubmit={handleSharePost}
+        isSubmitting={isSharingPost}
+        formatTime={formatPostTime}
+        typeLabel={typeLabel}
+        renderAttachment={renderAttachment}
+        onAuthorClick={(authorId) => navigate(`/profile/${authorId}`)}
+      />
     </div>
   );
 }

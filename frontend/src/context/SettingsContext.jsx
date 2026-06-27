@@ -64,6 +64,8 @@ const translations = {
     'settings.preview': 'Xem trước',
     'settings.previewTitle': 'Không gian học tập được cá nhân hóa',
     'settings.previewDesc': 'Thay đổi sẽ được áp dụng ngay cho thanh điều hướng, trang cài đặt và các màn hình nhóm/bảng tin mới.',
+    'post.edit': 'Chỉnh sửa',
+    'post.delete': 'Xóa bài viết',
   },
   en: {
     'common.justNow': 'Just now',
@@ -126,6 +128,8 @@ const translations = {
     'settings.preview': 'Preview',
     'settings.previewTitle': 'A personalized study space',
     'settings.previewDesc': 'Changes apply instantly to the navbar, settings page, and the updated feed/group screens.',
+    'post.edit': 'Edit post',
+    'post.delete': 'Delete post',
   },
 };
 

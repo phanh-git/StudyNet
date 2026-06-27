@@ -10,5 +10,6 @@ import java.util.List;
 public class GroupDetailResponse {
     private GroupResponse group;
     private List<GroupMemberResponse> members;
+    private List<GroupMemberResponse> pendingMembers;
     private List<FeedPostResponse> posts;
 }

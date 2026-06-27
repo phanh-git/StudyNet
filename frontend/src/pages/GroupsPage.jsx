@@ -1,18 +1,28 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Users, BookOpen } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Users, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import StudentNavbar from '../components/StudentNavbar';
 import { useAuth } from '../context/AuthContext';
 import { createGroup, fetchAllGroups, fetchSubjects, joinGroup } from '../services/api';
+
+const GROUPS_PAGE_SIZE = 6;
 
 export default function GroupsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [subjects, setSubjects] = useState([]);
   const [groups, setGroups] = useState([]);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    size: GROUPS_PAGE_SIZE,
+    totalPages: 1,
+    totalItems: 0,
+    joinedCount: 0,
+  });
   const [selectedSubjectId, setSelectedSubjectId] = useState(null);
   const [searchInput, setSearchInput] = useState('');
   const [searchKeyword, setSearchKeyword] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddingCustomSubject, setIsAddingCustomSubject] = useState(false);
   const [isSubmittingGroup, setIsSubmittingGroup] = useState(false);
@@ -31,19 +41,45 @@ export default function GroupsPage() {
   }, []);
 
   useEffect(() => {
-    fetchAllGroups({ userId: user.id, subjectId: selectedSubjectId, keyword: searchKeyword })
-      .then(setGroups)
+    fetchAllGroups({
+      userId: user.id,
+      subjectId: selectedSubjectId,
+      keyword: searchKeyword,
+      page: currentPage,
+      size: GROUPS_PAGE_SIZE,
+    })
+      .then((response) => {
+        setGroups(response.items);
+        setPagination({
+          page: response.page,
+          size: response.size,
+          totalPages: response.totalPages,
+          totalItems: response.totalItems,
+          joinedCount: response.joinedCount,
+        });
+        if (response.page !== currentPage) {
+          setCurrentPage(response.page);
+        }
+      })
       .catch((error) => setPageError(error.message || 'Không thể tải danh sách nhóm.'));
-  }, [user.id, selectedSubjectId, searchKeyword]);
+  }, [user.id, selectedSubjectId, searchKeyword, currentPage]);
 
   const joinedCount = useMemo(
-    () => groups.filter((group) => group.joined).length,
-    [groups],
+    () => pagination.joinedCount,
+    [pagination.joinedCount],
   );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedSubjectId, searchKeyword]);
 
   const handleJoinGroup = async (groupId) => {
     const updated = await joinGroup(groupId, user.id);
     setGroups((current) => current.map((group) => (group.id === groupId ? updated : group)));
+    setPagination((current) => ({
+      ...current,
+      joinedCount: current.joinedCount + (updated.joined ? 1 : 0),
+    }));
   };
 
   const handleCreateGroup = async () => {
@@ -67,6 +103,11 @@ export default function GroupsPage() {
         creatorId: user.id,
       });
       setGroups((current) => [created, ...current]);
+      setPagination((current) => ({
+        ...current,
+        totalItems: current.totalItems + 1,
+        joinedCount: current.joinedCount + 1,
+      }));
       setFormData({ name: '', description: '', subjectId: '', customSubjectName: '', status: 'PUBLIC' });
       setIsAddingCustomSubject(false);
       setIsModalOpen(false);
@@ -135,7 +176,7 @@ export default function GroupsPage() {
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <div className="rounded-3xl bg-slate-50 p-5">
                 <p className="text-sm text-slate-500">Tất cả nhóm</p>
-                <p className="mt-2 text-3xl font-bold text-slate-900">{groups.length}</p>
+                <p className="mt-2 text-3xl font-bold text-slate-900">{pagination.totalItems}</p>
               </div>
               <div className="rounded-3xl bg-slate-50 p-5">
                 <p className="text-sm text-slate-500">Đã tham gia</p>
@@ -205,6 +246,32 @@ export default function GroupsPage() {
                 </div>
               </article>
             ))}
+          </div>
+
+          <div className="flex flex-col gap-3 rounded-[28px] bg-white px-5 py-4 shadow-sm md:flex-row md:items-center md:justify-between">
+            <p className="text-sm text-slate-500">
+              Trang {pagination.page}/{pagination.totalPages} · Hiển thị {groups.length} trên tổng {pagination.totalItems} nhóm
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                disabled={pagination.page <= 1}
+                className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Trước
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.min(pagination.totalPages, page + 1))}
+                disabled={pagination.page >= pagination.totalPages}
+                className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Sau
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </section>
       </main>

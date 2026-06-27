@@ -18,10 +18,10 @@ public class Post {
     @Column(columnDefinition = "TEXT")
     private String fileUrl;
 
-    @Column(length = 255)
+    @Column(columnDefinition = "TEXT")
     private String fileName;
 
-    @Column(length = 120)
+    @Column(columnDefinition = "TEXT")
     private String fileType;
 
     @Column(length = 20)

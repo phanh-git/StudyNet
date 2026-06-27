@@ -47,7 +47,7 @@ function App() {
         <Route
           path="/profile"
           element={
-            <ProtectedRoute allowRole="USER">
+            <ProtectedRoute allowRoles={['USER', 'ADMIN']}>
               <ProfilePage />
             </ProtectedRoute>
           }
@@ -55,7 +55,7 @@ function App() {
         <Route
           path="/profile/:userId"
           element={
-            <ProtectedRoute allowRole="USER">
+            <ProtectedRoute allowRoles={['USER', 'ADMIN']}>
               <ProfilePage />
             </ProtectedRoute>
           }
@@ -63,7 +63,7 @@ function App() {
         <Route
           path="/settings"
           element={
-            <ProtectedRoute allowRole="USER">
+            <ProtectedRoute allowRoles={['USER', 'ADMIN']}>
               <SettingsPage />
             </ProtectedRoute>
           }

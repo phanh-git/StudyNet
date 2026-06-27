@@ -10,4 +10,5 @@ public class GroupMemberResponse {
     private String fullName;
     private String school;
     private String role;
+    private String membershipStatus;
 }

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BarChart3, Bell, BookOpen, DatabaseZap, FolderKanban, LogOut, Menu, ShieldCheck, Users } from 'lucide-react';
+import { BarChart3, Bell, BookOpen, DatabaseZap, FolderKanban, LogOut, Menu, Settings, ShieldCheck, UserCircle2, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../context/SettingsContext';
 import { fetchAdminGroups, fetchAdminOverview, fetchAdminPosts, fetchAdminUsers, seedDemoData, seedSampleData } from '../services/api';
 
 const sidebarItems = [
@@ -30,6 +31,7 @@ function formatTime(value) {
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { t } = useSettings();
   const [activeTab, setActiveTab] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [overview, setOverview] = useState(null);
@@ -40,6 +42,7 @@ export default function AdminDashboardPage() {
   const [pageError, setPageError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
   const [isSeeding, setIsSeeding] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const loadDashboard = async () => {
     setIsLoading(true);
@@ -301,6 +304,16 @@ export default function AdminDashboardPage() {
     tools: renderTools(),
   };
 
+  // Đóng menu khi click ra ngoài
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e) => {
+      if (!e.target.closest('[data-menu]')) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [menuOpen]);
+
   return (
     <div className="min-h-screen bg-slate-100">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
@@ -318,31 +331,43 @@ export default function AdminDashboardPage() {
                 <ShieldCheck className="h-6 w-6 text-white" />
               </div>
               <div>
-                <p className="text-xl font-bold text-slate-900">StudyNet Admin</p>
-                <p className="text-xs text-slate-500">Bảng điều khiển quản trị</p>
+                <p className="text-xl font-bold text-slate-900">StudyNet</p>
               </div>
             </button>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600 md:block">
-              {overview?.totalUsers ?? 0} người dùng
+            {/* Bọc avatar trong relative để dropdown định vị đúng */}
+            <div className="relative" data-menu>
+              <button
+                type="button"
+                onClick={() => setMenuOpen((prev) => !prev)}
+                className="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-2 py-1.5 shadow-sm"
+              >
+                <img src={avatarFromName(user?.fullName)} alt={user?.fullName} className="h-10 w-10 rounded-full bg-indigo-100" />
+                <div className="hidden text-left sm:block">
+                  <p className="text-sm font-semibold text-slate-800">{user?.fullName}</p>
+                  <p className="text-xs text-slate-500">{user?.email}</p>
+                </div>
+              </button>
+
+              {menuOpen && (
+                <div className="absolute right-0 mt-3 w-56 rounded-3xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-200 z-50">
+                  <button type="button" onClick={() => navigate(`/profile/${user.id}`)} className="flex w-full items-center gap-3 rounded-full px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-100">
+                    <UserCircle2 className="h-4 w-4" />
+                    {t('nav.profile')}
+                  </button>
+                  <button type="button" onClick={() => navigate('/settings')} className="flex w-full items-center gap-3 rounded-full px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-100">
+                    <Settings className="h-4 w-4" />
+                    {t('nav.settings')}
+                  </button>
+                  <button type="button" onClick={logout} className="flex w-full items-center gap-3 rounded-full px-4 py-3 text-sm text-rose-600 transition hover:bg-rose-50">
+                    <LogOut className="h-4 w-4" />
+                    {t('nav.logout')}
+                  </button>
+                </div>
+              )}
             </div>
-            <div className="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-2 py-1.5 shadow-sm">
-              <img src={avatarFromName(user?.fullName)} alt={user?.fullName} className="h-10 w-10 rounded-full bg-indigo-100" />
-              <div className="hidden text-left sm:block">
-                <p className="text-sm font-semibold text-slate-800">{user?.fullName}</p>
-                <p className="text-xs text-slate-500">{user?.email}</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={logout}
-              className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
-            >
-              <LogOut className="h-4 w-4" />
-              Đăng xuất
-            </button>
           </div>
         </div>
       </header>
@@ -363,7 +388,7 @@ export default function AdminDashboardPage() {
                     setSidebarOpen(false);
                   }}
                   className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold transition ${
-                    active ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
+                    active ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'text-slate-600 hover:bg-slate-100'
                   }`}
                 >
                   <Icon className="h-4 w-4" />
