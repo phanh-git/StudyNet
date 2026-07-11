@@ -15,18 +15,6 @@ const features = [
     desc: 'Đăng câu hỏi, chia sẻ tài liệu và thảo luận như mạng xã hội thực thụ',
     color: 'bg-blue-100 text-blue-600',
   },
-  // {
-  //   icon: <BookOpen className="w-6 h-6" />,
-  //   title: 'Kho tài liệu phong phú',
-  //   desc: 'Hàng nghìn tài liệu học tập được chia sẻ bởi cộng đồng sinh viên',
-  //   color: 'bg-emerald-100 text-emerald-600',
-  // },
-  // {
-  //   icon: <Zap className="w-6 h-6" />,
-  //   title: 'Tìm kiếm thông minh',
-  //   desc: 'Lọc bài viết theo môn học, loại nội dung và thời gian một cách dễ dàng',
-  //   color: 'bg-amber-100 text-amber-600',
-  // },
   {
     icon: <Globe className="w-6 h-6" />,
     title: 'Kết nối toàn quốc',
@@ -64,13 +52,13 @@ export default function HomePage() {
           <div className="flex items-center gap-3">
             <Link
               to="/login"
-              className="px-4 py-2 text-black-600 hover:text-indigo-600 transition-colors text-lg font-medium"
+              className="px-4 py-2 text-black-600 hover:text-indigo-600 transition-colors text-medium font-medium"
             >
               Đăng nhập
             </Link>
             <Link
               to="/register"
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-lg font-medium"
+              className="px-4 py-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition-colors text-medium font-medium"
             >
               Đăng ký 
             </Link>
@@ -208,7 +196,7 @@ export default function HomePage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.08 }}
-                className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
+                className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
               >
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${feature.color}`}>
                   {feature.icon}
@@ -228,7 +216,7 @@ export default function HomePage() {
           <p className="text-indigo-200 mb-8">Đăng ký miễn phí và bắt đầu kết nối với hàng nghìn sinh viên ngay hôm nay</p>
           <Link
             to="/register"
-            className="px-8 py-3.5 bg-white text-indigo-600 rounded-xl font-semibold hover:bg-indigo-50 transition-colors shadow-lg"
+            className="px-8 py-3.5 bg-white text-indigo-600 rounded-full font-semibold hover:bg-indigo-50 transition-colors shadow-lg"
           >
             Đăng ký miễn phí ngay →
           </Link>

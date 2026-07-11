@@ -26,9 +26,6 @@ public class Notification {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String message;
 
-    @Column(length = 255)
-    private String targetUrl; // Đường dẫn để click nhảy trang trên Frontend
-
     private Boolean isRead = false;
 
     private LocalDateTime createdAt;

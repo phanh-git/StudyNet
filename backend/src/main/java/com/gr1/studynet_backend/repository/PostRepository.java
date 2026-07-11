@@ -7,21 +7,34 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Collection;
 
 @Repository
 public interface PostRepository extends JpaRepository<Post, Long> {
     
-    // 1. Lấy bài viết cho Newsfeed chung (Chỉ lấy bài cá nhân HOẶC bài nằm trong nhóm PUBLIC)
-    @Query("SELECT p FROM Post p LEFT JOIN p.group g WHERE g IS NULL OR g.status = 'PUBLIC' ORDER BY p.createdAt DESC")
+    // 1. Lấy bài viết cho Newsfeed chung
+    @Query("SELECT p FROM Post p ORDER BY p.createdAt DESC")
     List<Post> findPublicPostsForNewsfeed();
 
-    // 2. FILTER: Lọc bài viết công khai theo môn học từ trang chủ
-    @Query("SELECT p FROM Post p LEFT JOIN p.group g LEFT JOIN p.subject s WHERE s.id = :subjectId AND (g IS NULL OR g.status = 'PUBLIC') ORDER BY p.createdAt DESC")
+    // 2. FILTER: Lọc bài viết theo môn học từ trang chủ
+    @Query("SELECT p FROM Post p LEFT JOIN p.subject s WHERE s.id = :subjectId ORDER BY p.createdAt DESC")
     List<Post> filterPublicPostsBySubject(@Param("subjectId") Long subjectId);
 
-    @Query("SELECT p FROM Post p LEFT JOIN p.group g LEFT JOIN p.subject s WHERE (:subjectId IS NULL OR s.id = :subjectId) AND (:type IS NULL OR p.type = :type) AND (g IS NULL OR g.status = 'PUBLIC') ORDER BY p.createdAt DESC")
+    @Query("SELECT p FROM Post p LEFT JOIN p.subject s WHERE (:subjectId IS NULL OR s.id = :subjectId) AND (:type IS NULL OR p.type = :type) ORDER BY p.createdAt DESC")
     List<Post> findFilteredPublicPosts(@Param("subjectId") Long subjectId, @Param("type") String type);
+
+    @Query("""
+        SELECT p
+        FROM Post p
+        JOIN p.group g
+        JOIN GroupMember gm ON gm.group = g
+        LEFT JOIN p.subject s
+        WHERE gm.user.id = :userId
+          AND gm.membershipStatus = 'APPROVED'
+          AND (:subjectId IS NULL OR s.id = :subjectId)
+          AND (:type IS NULL OR p.type = :type)
+        ORDER BY p.createdAt DESC
+        """)
+    List<Post> findFeedPostsForUser(@Param("userId") Long userId, @Param("subjectId") Long subjectId, @Param("type") String type);
 
     // 3. Lấy toàn bộ bài viết bên trong một nhóm cụ thể (Dùng khi click hẳn vào trong nhóm đó)
     List<Post> findByGroupIdOrderByCreatedAtDesc(Long groupId);
@@ -30,15 +43,9 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     long countByUserId(Long userId);
 
-    long countBySharedPostId(Long sharedPostId);
-
-    boolean existsByUserIdAndSharedPostId(Long userId, Long sharedPostId);
-
     List<Post> findByUserIdOrderByCreatedAtDesc(Long userId);
 
     List<Post> findByGroupId(Long groupId);
-
-    List<Post> findBySharedPostIdIn(Collection<Long> sharedPostIds);
 
     void deleteByGroupId(Long groupId);
 }

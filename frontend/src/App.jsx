@@ -3,11 +3,9 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import FeedPage from './pages/FeedPage';
-import AdminDashboardPage from './pages/AdminDashboardPage';
 import GroupsPage from './pages/GroupsPage';
 import GroupDetailPage from './pages/GroupDetailPage';
 import ProfilePage from './pages/ProfilePage';
-import SettingsPage from './pages/SettingsPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 
@@ -18,12 +16,12 @@ function App() {
     <div className="App">
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/login" element={user ? <Navigate to={user.role === 'ADMIN' ? '/admin' : '/feed'} replace /> : <LoginPage />} />
-        <Route path="/register" element={user ? <Navigate to={user.role === 'ADMIN' ? '/admin' : '/feed'} replace /> : <RegisterPage />} />
+        <Route path="/login" element={user ? <Navigate to="/feed" replace /> : <LoginPage />} />
+        <Route path="/register" element={user ? <Navigate to="/feed" replace /> : <RegisterPage />} />
         <Route
           path="/feed"
           element={
-            <ProtectedRoute allowRole="USER">
+            <ProtectedRoute allowRoles={['USER', 'ADMIN']}>
               <FeedPage />
             </ProtectedRoute>
           }
@@ -31,7 +29,7 @@ function App() {
         <Route
           path="/groups"
           element={
-            <ProtectedRoute allowRole="USER">
+            <ProtectedRoute allowRoles={['USER', 'ADMIN']}>
               <GroupsPage />
             </ProtectedRoute>
           }
@@ -39,7 +37,7 @@ function App() {
         <Route
           path="/groups/:groupId"
           element={
-            <ProtectedRoute allowRole="USER">
+            <ProtectedRoute allowRoles={['USER', 'ADMIN']}>
               <GroupDetailPage />
             </ProtectedRoute>
           }
@@ -60,22 +58,8 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute allowRoles={['USER', 'ADMIN']}>
-              <SettingsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute allowRole="ADMIN">
-              <AdminDashboardPage />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/settings" element={<Navigate to="/feed" replace />} />
+        <Route path="/admin" element={<Navigate to="/feed" replace />} />
       </Routes>
     </div>
   );

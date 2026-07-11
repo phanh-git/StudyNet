@@ -41,6 +41,6 @@ public class ApiExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<String> handleDataIntegrityViolation(DataIntegrityViolationException exception) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-            .body("Dữ liệu bài đăng quá dài hoặc không hợp lệ. Vui lòng rút gọn tên tệp hoặc thử lại.");
+            .body("Dữ liệu lưu vào hệ thống không hợp lệ. Nếu bạn vừa đính kèm tệp, hãy thử tải lại trang và đăng lại.");
     }
 }

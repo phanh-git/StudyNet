@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { Ellipsis, FileImage, Paperclip, Pencil, Trash2, X } from 'lucide-react';
-import { useSettings } from '../context/SettingsContext';
 import { readFileAsDataUrl } from '../utils/postAttachments';
 
 export default function PostOwnerMenu({
@@ -10,7 +9,6 @@ export default function PostOwnerMenu({
   onSave,
   onDelete,
 }) {
-  const { t } = useSettings();
   const [menuOpen, setMenuOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [content, setContent] = useState(post.content ?? '');
@@ -57,8 +55,8 @@ export default function PostOwnerMenu({
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 3 * 1024 * 1024) {
-      window.alert('Vui long chon tep nho hon 3MB.');
+    if (file.size > 10 * 1024 * 1024) {
+      window.alert('Vui lòng chọn tệp nhỏ hơn 10MB.');
       event.target.value = '';
       return;
     }
@@ -71,7 +69,7 @@ export default function PostOwnerMenu({
         fileType: file.type || 'application/octet-stream',
       });
     } catch (error) {
-      window.alert(error.message || 'Khong the doc tep dinh kem.');
+      window.alert(error.message || 'Không thể đọc tệp đính kèm.');
     } finally {
       event.target.value = '';
     }
@@ -79,7 +77,7 @@ export default function PostOwnerMenu({
 
   const handleSave = async () => {
     if (!content.trim() && !attachment) {
-      window.alert('Bai viet can co noi dung hoac tep dinh kem.');
+      window.alert('Bài viết cần có nội dung hoặc tệp đính kèm.');
       return;
     }
 
@@ -122,7 +120,7 @@ export default function PostOwnerMenu({
               className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
             >
               <Pencil className="h-4 w-4" />
-              {t('post.edit')}
+              Chỉnh sửa
             </button>
             <button
               type="button"
@@ -130,7 +128,7 @@ export default function PostOwnerMenu({
               className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-rose-600 transition hover:bg-rose-50"
             >
               <Trash2 className="h-4 w-4" />
-              {t('post.delete')}
+              Xóa bài viết
             </button>
           </div>
         )}
@@ -142,7 +140,7 @@ export default function PostOwnerMenu({
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-xl font-semibold text-slate-900">Chỉnh sửa bài viết</h3>
-                <p className="mt-1 text-sm text-slate-500">ạn có thể cập nhật nội dung, loại bài đăng và tập tin đính kèm.</p>
+                <p className="mt-1 text-sm text-slate-500">Bạn có thể cập nhật nội dung, loại bài đăng và tập tin đính kèm.</p>
               </div>
               <button
                 type="button"
@@ -161,7 +159,7 @@ export default function PostOwnerMenu({
                 value={content}
                 onChange={(event) => setContent(event.target.value)}
                 rows={5}
-                placeholder="Ban muon cap nhat dieu gi?"
+                placeholder="Bạn muốn cập nhật điều gì?"
                 className="w-full resize-none bg-transparent text-sm leading-6 text-slate-700 outline-none"
               />
 
@@ -185,7 +183,7 @@ export default function PostOwnerMenu({
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-500 transition hover:text-emerald-600"
-                  title="Them anh"
+                  title="Thêm ảnh"
                 >
                   <FileImage className="h-5 w-5" />
                 </button>
@@ -193,7 +191,7 @@ export default function PostOwnerMenu({
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-500 transition hover:text-indigo-600"
-                  title="Them tep"
+                  title="Thêm tệp"
                 >
                   <Paperclip className="h-5 w-5" />
                 </button>
@@ -212,7 +210,7 @@ export default function PostOwnerMenu({
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-slate-800">{attachment.fileName}</p>
-                    <p className="mt-1 text-xs text-slate-500">{attachment.fileType || 'Tep dinh kem'}</p>
+                    <p className="mt-1 text-xs text-slate-500">{attachment.fileType || 'Tệp đính kèm'}</p>
                   </div>
                   <button
                     type="button"

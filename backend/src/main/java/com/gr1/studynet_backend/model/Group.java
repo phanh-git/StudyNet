@@ -18,9 +18,6 @@ public class Group {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(nullable = false, length = 10)
-    private String status; // "PUBLIC" hoặc "PRIVATE"
-
     @ManyToOne
     @JoinColumn(name = "creator_id", nullable = false)
     private User creator;

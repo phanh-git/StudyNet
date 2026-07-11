@@ -1,14 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { CircleHelp, FileImage, FileText, MessageCircle, Megaphone, Paperclip, Plus, Heart, Send, Share2, ThumbsUp, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { CircleHelp, FileText, Heart, Megaphone, MessageCircle, Paperclip, Send, ThumbsUp, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import PostOwnerMenu from '../components/PostOwnerMenu';
-import SharePostModal from '../components/SharePostModal';
-import SharedPostPreview, { shouldRenderPostBody } from '../components/SharedPostPreview';
 import StudentNavbar from '../components/StudentNavbar';
 import { useAuth } from '../context/AuthContext';
-import { useSettings } from '../context/SettingsContext';
-import { addComment, createPost, deletePost, fetchComments, fetchFeed, fetchSubjects, fetchUserGroups, reactToPost, sharePost, updatePost } from '../services/api';
-import { isImageAttachment, readFileAsDataUrl } from '../utils/postAttachments';
+import { addComment, deleteComment, deletePost, fetchComments, fetchFeed, fetchSubjects, fetchUserGroups, reactToPost, updatePost } from '../services/api';
+import { isImageAttachment } from '../utils/postAttachments';
 
 const POST_TYPES = [
   { value: 'ALL', label: 'Tất cả' },
@@ -29,7 +26,6 @@ function avatarFromName(name = 'StudyNet User') {
 
 export default function FeedPage() {
   const { user } = useAuth();
-  const { t, locale } = useSettings();
   const [subjects, setSubjects] = useState([]);
   const [groups, setGroups] = useState([]);
   const [posts, setPosts] = useState([]);
@@ -38,26 +34,18 @@ export default function FeedPage() {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [postType, setPostType] = useState('ALL');
   const [sortBy, setSortBy] = useState('LATEST');
-  const [composerType, setComposerType] = useState('DISCUSSION');
-  const [composerContent, setComposerContent] = useState('');
-  const [composerAttachment, setComposerAttachment] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [pageError, setPageError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
   const [expandedComments, setExpandedComments] = useState({});
   const [commentsByPost, setCommentsByPost] = useState({});
   const [commentInputs, setCommentInputs] = useState({});
-  const [shareModalPost, setShareModalPost] = useState(null);
-  const [shareContent, setShareContent] = useState('');
-  const [isSharingPost, setIsSharingPost] = useState(false);
   const navigate = useNavigate();
-  const fileInputRef = useRef(null);
 
   const formatTime = (value) => {
-    if (!value) return t('common.justNow');
+    if (!value) return 'Vừa xong';
     const date = new Date(value);
-    return new Intl.DateTimeFormat(locale, {
+    return new Intl.DateTimeFormat('vi-VN', {
       day: '2-digit',
       month: '2-digit',
       hour: '2-digit',
@@ -65,7 +53,12 @@ export default function FeedPage() {
     }).format(date);
   };
 
-  const typeLabel = (type) => POST_TYPES.find((item) => item.value === type)?.label ?? 'Post';
+  const typeLabel = (type) => POST_TYPES.find((item) => item.value === type)?.label ?? 'Bài viết';
+
+  const activeSubjectName = useMemo(
+    () => subjects.find((subject) => subject.id === selectedSubjectId)?.name ?? 'Tất cả môn học',
+    [selectedSubjectId, subjects],
+  );
 
   const loadFeed = async () => {
     setIsLoading(true);
@@ -102,69 +95,9 @@ export default function FeedPage() {
     loadFeed();
   }, [selectedSubjectId, searchKeyword, postType, sortBy]);
 
-  const activeSubjectName = useMemo(
-    () => subjects.find((subject) => subject.id === selectedSubjectId)?.name ?? 'Tất cả môn học',
-    [subjects, selectedSubjectId],
-  );
-
   const submitSearch = (event) => {
     event.preventDefault();
     setSearchKeyword(searchInput);
-  };
-
-  const handleCreatePost = async () => {
-    if (!composerContent.trim() && !composerAttachment) return;
-
-    try {
-      setIsSubmitting(true);
-      const createdPost = await createPost({
-        content: composerContent.trim(),
-        type: composerType,
-        userId: user.id,
-        subjectId: selectedSubjectId,
-        fileUrl: composerAttachment?.fileUrl ?? null,
-        fileName: composerAttachment?.fileName ?? null,
-        fileType: composerAttachment?.fileType ?? null,
-      });
-      setPosts((current) => [createdPost, ...current]);
-      setComposerContent('');
-      setComposerAttachment(null);
-      setPageError('');
-      setActionMessage('');
-    } catch (error) {
-      setPageError(error.message || 'Không thể đăng bài lúc này.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleComposerFileChange = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 3 * 1024 * 1024) {
-      setPageError('Vui lòng chọn tệp nhỏ hơn 3MB để đăng nhanh trên hệ thống.');
-      event.target.value = '';
-      return;
-    }
-
-    try {
-      const fileUrl = await readFileAsDataUrl(file);
-      setComposerAttachment({
-        fileUrl,
-        fileName: file.name,
-        fileType: file.type || 'application/octet-stream',
-      });
-      setPageError('');
-    } catch (error) {
-      setPageError(error.message || 'Không thể đọc tệp đính kèm.');
-    } finally {
-      event.target.value = '';
-    }
-  };
-
-  const clearComposerAttachment = () => {
-    setComposerAttachment(null);
   };
 
   const renderAttachment = (attachment) => {
@@ -200,8 +133,8 @@ export default function FeedPage() {
     }
   };
 
-  const handleReact = async (postId, type = 'LIKE') => {
-    const summary = await reactToPost(postId, { userId: user.id, type });
+  const handleReact = async (postId) => {
+    const summary = await reactToPost(postId, { userId: user.id, type: 'LIKE' });
     setPosts((current) => current.map((post) => (
       post.id === postId
         ? { ...post, reactionCount: summary.reactionCount, currentUserReaction: summary.currentUserReaction }
@@ -225,37 +158,30 @@ export default function FeedPage() {
     setExpandedComments((current) => ({ ...current, [postId]: true }));
   };
 
-  const openShareModal = (post) => {
-    setShareModalPost(post);
-    setShareContent('');
-    setPageError('');
-  };
-
-  const closeShareModal = () => {
-    if (isSharingPost) return;
-    setShareModalPost(null);
-    setShareContent('');
-  };
-
-  const handleSharePost = async () => {
-    if (!shareModalPost) return;
-
-    try {
-      setIsSharingPost(true);
-      await sharePost(shareModalPost.id, {
-        userId: user.id,
-        content: shareContent,
-      });
-      await loadFeed();
-      setActionMessage('Bài viết đã được chia sẻ về trang cá nhân của bạn.');
-      setPageError('');
-      setShareModalPost(null);
-      setShareContent('');
-    } catch (error) {
-      setPageError(error.message || 'Không thể chia sẻ bài viết lúc này.');
-    } finally {
-      setIsSharingPost(false);
+  const handleDeleteComment = async (postId, commentId) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa bình luận này không?')) {
+      return;
     }
+
+    await deleteComment(postId, commentId, user.id);
+    setCommentsByPost((current) => ({
+      ...current,
+      [postId]: (current[postId] ?? []).filter((comment) => comment.id !== commentId),
+    }));
+    setPosts((current) => current.map((post) => (
+      post.id === postId ? { ...post, commentCount: Math.max(0, post.commentCount - 1) } : post
+    )));
+  };
+
+  const handleCommentKeyDown = (event, postId) => {
+    if (event.key !== 'Enter' || event.shiftKey) {
+      return;
+    }
+
+    event.preventDefault();
+    handleAddComment(postId).catch((error) => {
+      setPageError(error.message || 'Không thể gửi bình luận lúc này.');
+    });
   };
 
   const handleUpdatePost = async (postId, payload) => {
@@ -300,29 +226,35 @@ export default function FeedPage() {
         <aside className="space-y-6">
           <section className="rounded-[28px] bg-white p-5 shadow-sm">
             <div className="mb-4">
-              <h2 className="font-semibold text-slate-900">{t('feed.yourGroups')}</h2>
-              <p className="text-xs text-slate-500">{t('feed.yourGroupsDesc')}</p>
+              <h2 className="font-semibold text-slate-900">Nhóm của bạn</h2>
+              <p className="text-xs text-slate-500">Các nhóm học bạn đã tham gia</p>
             </div>
 
             <div className="space-y-3">
-              {groups.map((group) => (
+              {groups.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
+                  Bạn chưa tham gia nhóm nào nên bảng tin hiện chưa có bài đăng.
+                </div>
+              ) : groups.map((group) => (
                 <div
                   key={group.id}
                   onClick={() => navigate(`/groups/${group.id}`)}
                   role="button"
                   tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') navigate(`/groups/${group.id}`);
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      navigate(`/groups/${group.id}`);
+                    }
                   }}
-                  className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 transition hover:border-indigo-200 hover:bg-indigo-50 cursor-pointer"
+                  className="cursor-pointer rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 transition hover:border-indigo-200 hover:bg-indigo-50"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-semibold text-slate-800">{group.name}</p>
-                      <p className="mt-1 text-xs text-slate-500">{group.subjectName || t('feed.noSubject')}</p>
+                      <p className="mt-1 text-xs text-slate-500">{group.subjectName || 'Chưa gắn môn học'}</p>
                     </div>
                     <span className="flex-shrink-0 whitespace-nowrap rounded-full bg-white px-3 py-1 text-xs font-semibold text-indigo-600">
-                      {group.memberCount} {t('feed.members')}
+                      {group.memberCount} thành viên
                     </span>
                   </div>
                 </div>
@@ -332,8 +264,8 @@ export default function FeedPage() {
 
           <section className="rounded-[28px] bg-white p-5 shadow-sm">
             <div className="mb-4">
-              <h2 className="font-semibold text-slate-900">{t('feed.filterBySubject')}</h2>
-              <p className="text-xs text-slate-500">{t('feed.filterBySubjectDesc')}</p>
+              <h2 className="font-semibold text-slate-900">Lọc theo môn học</h2>
+              <p className="text-xs text-slate-500">Hiển thị bài viết theo môn học</p>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -342,7 +274,7 @@ export default function FeedPage() {
                 onClick={() => setSelectedSubjectId(null)}
                 className={`rounded-full px-4 py-2 text-sm font-semibold transition ${selectedSubjectId === null ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
               >
-                {t('feed.all')}
+                Tất cả
               </button>
               {subjects.map((subject) => (
                 <button
@@ -359,95 +291,6 @@ export default function FeedPage() {
         </aside>
 
         <section className="space-y-5">
-          <div className="rounded-[32px] bg-white p-6 shadow-sm">
-            <div className="flex items-start gap-4">
-              <img
-                src={avatarFromName(user.fullName)}
-                alt={user.fullName}
-                className="h-14 w-14 rounded-full bg-indigo-100"
-              />
-              <div className="flex-1">
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 transition focus-within:border-indigo-300 focus-within:bg-white">
-                  <textarea
-                    value={composerContent}
-                    onChange={(event) => setComposerContent(event.target.value)}
-                    rows={1}
-                    placeholder={`${user.fullName}, ${t('feed.askShare')}`}
-                    className="w-full resize-none rounded-t-3xl bg-transparent px-5 pt-4 pb-3 text-sm text-slate-700 outline-none"
-                  />
-                  <div className="flex items-center justify-end px-4 pb-3">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition hover:bg-white hover:text-emerald-600"
-                        title="Thêm ảnh"
-                      >
-                        <FileImage className="h-5 w-5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition hover:bg-white hover:text-indigo-600"
-                        title="Đính kèm tệp"
-                      >
-                        <Paperclip className="h-5 w-5" />
-                      </button>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.zip,.rar"
-                        onChange={handleComposerFileChange}
-                        className="hidden"
-                      />
-                    </div>
-                  </div>
-                </div>
-                {composerAttachment && (
-                  <div className="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-slate-800">{composerAttachment.fileName}</p>
-                        <p className="mt-1 text-xs text-slate-500">{composerAttachment.fileType || 'Tệp đính kèm'}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={clearComposerAttachment}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                    {renderAttachment(composerAttachment)}
-                  </div>
-                )}
-                <div className="mt-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-                  <div className="flex flex-wrap gap-2">
-                    {POST_TYPES.filter((item) => item.value !== 'ALL').map((item) => (
-                      <button
-                        key={item.value}
-                        type="button"
-                        onClick={() => setComposerType(item.value)}
-                        className={`rounded-full px-4 py-2 text-sm font-semibold transition ${composerType === item.value ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleCreatePost}
-                    disabled={isSubmitting || (!composerContent.trim() && !composerAttachment)}
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <Plus className="h-4 w-4" />
-                    {isSubmitting ? t('feed.posting') : t('feed.createPost')}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <div className="rounded-[28px] bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex flex-wrap gap-2">
@@ -475,9 +318,6 @@ export default function FeedPage() {
                 ))}
               </div>
             </div>
-            {/* <p className="mt-4 text-sm text-slate-500">
-              {t('feed.viewingSubject')} <span className="font-semibold text-slate-700">{activeSubjectName}</span>
-            </p> */}
           </div>
 
           {pageError && (
@@ -494,8 +334,12 @@ export default function FeedPage() {
 
           {isLoading ? (
             <div className="rounded-[28px] bg-white p-10 text-center shadow-sm">
-              <div className="mx-auto mb-4 h-10 w-10 rounded-full border-4 border-indigo-100 border-t-indigo-600 animate-spin" />
-              <p className="text-sm text-slate-500">{t('feed.loading')}</p>
+              <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-indigo-100 border-t-indigo-600" />
+              <p className="text-sm text-slate-500">Đang tải bảng tin học tập...</p>
+            </div>
+          ) : posts.length === 0 ? (
+            <div className="rounded-[28px] bg-white px-6 py-10 text-center text-sm text-slate-500 shadow-sm">
+              Bạn chưa có bài đăng nào trên bảng tin. Hãy tham gia nhóm và bắt đầu thảo luận.
             </div>
           ) : (
             posts.map((post) => (
@@ -536,7 +380,7 @@ export default function FeedPage() {
                       )}
                     </div>
                     <p className="mt-1 text-sm text-slate-500">
-                      {post.authorSchool || t('feed.studentLabel')} · {formatTime(post.createdAt)}
+                      {post.authorSchool || 'Sinh viên StudyNet'} · {formatTime(post.createdAt)}
                     </p>
                   </div>
                   {post.authorId === user.id && (
@@ -550,28 +394,11 @@ export default function FeedPage() {
                   )}
                 </div>
 
-                {/* {post.shared && (
-                  <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
-                    <Share2 className="h-4 w-4" />
-                    Đã chia sẻ vào {formatTime(post.createdAt)}
-                  </div>
-                )} */}
-
-                {shouldRenderPostBody(post) && post.content && (
+                {post.content && (
                   <p className="mt-5 text-[15px] leading-7 text-slate-700">{post.content}</p>
                 )}
 
-                {shouldRenderPostBody(post) && renderAttachment(post)}
-
-                {post.sharedPostPreview && (
-                  <SharedPostPreview
-                    post={post.sharedPostPreview}
-                    formatTime={formatTime}
-                    typeLabel={typeLabel}
-                    renderAttachment={renderAttachment}
-                    onAuthorClick={(authorId) => navigate(`/profile/${authorId}`)}
-                  />
-                )}
+                {renderAttachment(post)}
 
                 <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4 text-sm text-slate-500">
                   <div className="flex items-center gap-4">
@@ -580,12 +407,12 @@ export default function FeedPage() {
                       onClick={() => handleReact(post.id)}
                       className={`flex items-center gap-2 rounded-full px-3 py-2 font-semibold transition ${
                         post.currentUserReaction
-                          ? 'bg-rose-50 text-rose-600'
+                          ? 'bg-slate-100 text-yellow-600'
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                       }`}
                     >
-                      {post.currentUserReaction ? <Heart className="h-4 w-4 fill-current" /> : <ThumbsUp className="h-4 w-4" />}
-                      {post.reactionCount} {t('feed.likes')}
+                      {post.currentUserReaction ? <ThumbsUp className="h-4 w-4 fill-current" /> : <ThumbsUp className="h-4 w-4" />}
+                      {post.reactionCount} lượt thích
                     </button>
                     <button
                       type="button"
@@ -593,19 +420,7 @@ export default function FeedPage() {
                       className="flex items-center gap-2 rounded-full bg-slate-100 px-3 py-2 font-semibold text-slate-600 transition hover:bg-slate-200"
                     >
                       <MessageCircle className="h-4 w-4 text-indigo-500" />
-                      {post.commentCount} {t('feed.comments')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => !post.currentUserShared && openShareModal(post)}
-                      className={`flex items-center gap-2 rounded-full px-3 py-2 font-semibold transition ${
-                        post.currentUserShared
-                          ? 'bg-emerald-50 text-emerald-600'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
-                    >
-                      <Share2 className="h-4 w-4" />
-                      {post.shareCount} Chia sẻ
+                      {post.commentCount} bình luận
                     </button>
                   </div>
                   <button
@@ -613,7 +428,7 @@ export default function FeedPage() {
                     onClick={() => handleToggleComments(post.id)}
                     className="rounded-full bg-slate-100 px-4 py-2 font-semibold text-slate-600 transition hover:bg-slate-200"
                   >
-                    {expandedComments[post.id] ? t('feed.hideComments') : t('feed.viewDiscussion')}
+                    {expandedComments[post.id] ? 'Ẩn bình luận' : 'Xem thảo luận'}
                   </button>
                 </div>
 
@@ -623,14 +438,28 @@ export default function FeedPage() {
                       {(commentsByPost[post.id] ?? []).map((comment) => (
                         <div key={comment.id} className="rounded-2xl bg-white px-4 py-3">
                           <div className="flex items-center justify-between gap-3">
-                            <button
-                              type="button"
-                              onClick={() => navigate(`/profile/${comment.authorId}`)}
-                              className="text-sm font-semibold text-slate-800 transition hover:text-indigo-600"
-                            >
-                              {comment.authorName}
-                            </button>
-                            <p className="text-xs text-slate-400">{formatTime(comment.createdAt)}</p>
+                            <div className="flex min-w-0 items-center gap-3">
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/profile/${comment.authorId}`)}
+                                className="text-sm font-semibold text-slate-800 transition hover:text-indigo-600"
+                              >
+                                {comment.authorName}
+                              </button>
+                              <p className="text-xs text-slate-400">{formatTime(comment.createdAt)}</p>
+                            </div>
+                            {comment.authorId === user.id && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteComment(post.id, comment.id).catch((error) => {
+                                  setPageError(error.message || 'Không thể xóa bình luận lúc này.');
+                                })}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                                title="Xóa bình luận"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
                           </div>
                           <p className="mt-2 text-sm leading-6 text-slate-600">{comment.content}</p>
                         </div>
@@ -641,7 +470,8 @@ export default function FeedPage() {
                       <input
                         value={commentInputs[post.id] ?? ''}
                         onChange={(event) => setCommentInputs((current) => ({ ...current, [post.id]: event.target.value }))}
-                        placeholder={t('feed.writeComment')}
+                        onKeyDown={(event) => handleCommentKeyDown(event, post.id)}
+                        placeholder="Viết bình luận của bạn..."
                         className="flex-1 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-indigo-300"
                       />
                       <button
@@ -659,20 +489,6 @@ export default function FeedPage() {
           )}
         </section>
       </main>
-
-      <SharePostModal
-        open={Boolean(shareModalPost)}
-        post={shareModalPost}
-        shareContent={shareContent}
-        onShareContentChange={setShareContent}
-        onClose={closeShareModal}
-        onSubmit={handleSharePost}
-        isSubmitting={isSharingPost}
-        formatTime={formatTime}
-        typeLabel={typeLabel}
-        renderAttachment={renderAttachment}
-        onAuthorClick={(authorId) => navigate(`/profile/${authorId}`)}
-      />
     </div>
   );
 }

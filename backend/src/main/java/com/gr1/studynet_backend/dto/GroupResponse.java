@@ -9,7 +9,6 @@ public class GroupResponse {
     private Long id;
     private String name;
     private String description;
-    private String status;
     private String role;
     private String subjectName;
     private Long subjectId;

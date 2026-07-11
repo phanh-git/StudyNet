@@ -1,20 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import { BookOpen, Check, FileImage, Heart, LogOut, MessageCircle, Paperclip, Plus, Send, Share2, ThumbsUp, Trash2, Users, X } from 'lucide-react';
+import { BookOpen, Check, FileImage, Heart, LogOut, MessageCircle, Paperclip, Plus, Send, ThumbsUp, Trash2, Users, X } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PostOwnerMenu from '../components/PostOwnerMenu';
-import SharePostModal from '../components/SharePostModal';
-import SharedPostPreview, { shouldRenderPostBody } from '../components/SharedPostPreview';
 import StudentNavbar from '../components/StudentNavbar';
 import { useAuth } from '../context/AuthContext';
-import { useSettings } from '../context/SettingsContext';
-import { addComment, approveGroupMember, createPost, deleteGroup, deletePost, fetchComments, fetchGroupDetail, joinGroup, leaveGroup, reactToPost, rejectGroupMember, sharePost, updatePost } from '../services/api';
+import { addComment, approveGroupMember, createPost, deleteComment, deleteGroup, deletePost, fetchComments, fetchGroupDetail, joinGroup, leaveGroup, reactToPost, rejectGroupMember, updatePost } from '../services/api';
 import { isImageAttachment, readFileAsDataUrl } from '../utils/postAttachments';
 
 const POST_TYPES = [
-  { value: 'DISCUSSION', labelVi: 'Thảo luận', labelEn: 'Discussion' },
-  { value: 'QUESTION', labelVi: 'Câu hỏi', labelEn: 'Question' },
-  { value: 'MATERIAL', labelVi: 'Tài liệu', labelEn: 'Material' },
-  { value: 'ANNOUNCEMENT', labelVi: 'Thông báo', labelEn: 'Announcement' },
+  { value: 'DISCUSSION', label: 'Thảo luận' },
+  { value: 'QUESTION', label: 'Câu hỏi' },
+  { value: 'MATERIAL', label: 'Tài liệu' },
+  { value: 'ANNOUNCEMENT', label: 'Thông báo' },
 ];
 
 function avatarFromName(name = 'StudyNet User') {
@@ -25,7 +22,6 @@ export default function GroupDetailPage() {
   const { groupId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { t, locale, language } = useSettings();
   const [searchInput, setSearchInput] = useState('');
   const [groupDetail, setGroupDetail] = useState(null);
   const [pageError, setPageError] = useState('');
@@ -38,9 +34,6 @@ export default function GroupDetailPage() {
   const [expandedComments, setExpandedComments] = useState({});
   const [commentsByPost, setCommentsByPost] = useState({});
   const [commentInputs, setCommentInputs] = useState({});
-  const [shareModalPost, setShareModalPost] = useState(null);
-  const [shareContent, setShareContent] = useState('');
-  const [isSharingPost, setIsSharingPost] = useState(false);
   const [rejectModalMember, setRejectModalMember] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const composerRef = useRef(null);
@@ -61,9 +54,9 @@ export default function GroupDetailPage() {
   }, [groupId, user.id]);
 
   const formatTime = (value) => {
-    if (!value) return t('common.justNow');
+    if (!value) return 'Vừa xong';
     const date = new Date(value);
-    return new Intl.DateTimeFormat(locale, {
+    return new Intl.DateTimeFormat('vi-VN', {
       day: '2-digit',
       month: '2-digit',
       hour: '2-digit',
@@ -73,8 +66,7 @@ export default function GroupDetailPage() {
 
   const typeLabel = (type) => {
     const item = POST_TYPES.find((entry) => entry.value === type);
-    if (!item) return language === 'en' ? 'Post' : 'Bài viết';
-    return language === 'en' ? item.labelEn : item.labelVi;
+    return item?.label ?? 'Bài viết';
   };
 
   const handleJoinRequest = async () => {
@@ -118,8 +110,8 @@ export default function GroupDetailPage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 3 * 1024 * 1024) {
-      setPageError('Vui lòng chọn tệp nhỏ hơn 3MB để đăng nhanh trên hệ thống.');
+    if (file.size > 10 * 1024 * 1024) {
+      setPageError('Vui lòng chọn tệp nhỏ hơn 10MB để đăng trên hệ thống.');
       event.target.value = '';
       return;
     }
@@ -207,41 +199,37 @@ export default function GroupDetailPage() {
     } : current);
   };
 
-  const openShareModal = (post) => {
-    setShareModalPost(post);
-    setShareContent('');
-    setPageError('');
-  };
-
-  const closeShareModal = () => {
-    if (isSharingPost) return;
-    setShareModalPost(null);
-    setShareContent('');
-  };
-
-  const handleSharePost = async () => {
-    if (!shareModalPost) return;
-
-    try {
-      setIsSharingPost(true);
-      await sharePost(shareModalPost.id, {
-        userId: user.id,
-        content: shareContent,
-      });
-      await loadGroupDetail();
-      setActionMessage('Bài viết đã được chia sẻ về trang cá nhân của bạn.');
-      setPageError('');
-      setShareModalPost(null);
-      setShareContent('');
-    } catch (error) {
-      setPageError(error.message || 'Không thể chia sẻ bài viết lúc này.');
-    } finally {
-      setIsSharingPost(false);
+  const handleDeleteComment = async (postId, commentId) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa bình luận này không?')) {
+      return;
     }
+
+    await deleteComment(postId, commentId, user.id);
+    setCommentsByPost((current) => ({
+      ...current,
+      [postId]: (current[postId] ?? []).filter((comment) => comment.id !== commentId),
+    }));
+    setGroupDetail((current) => current ? {
+      ...current,
+      posts: current.posts.map((post) => (
+        post.id === postId ? { ...post, commentCount: Math.max(0, post.commentCount - 1) } : post
+      )),
+    } : current);
+  };
+
+  const handleCommentKeyDown = (event, postId) => {
+    if (event.key !== 'Enter' || event.shiftKey) {
+      return;
+    }
+
+    event.preventDefault();
+    handleAddComment(postId).catch((error) => {
+      setPageError(error.message || 'Không thể gửi bình luận lúc này.');
+    });
   };
 
   const handleLeaveGroup = async () => {
-    if (!window.confirm(language === 'en' ? 'Are you sure you want to leave this group?' : 'Bạn có chắc chắn muốn rời nhóm này không?')) {
+    if (!window.confirm('Bạn có chắc chắn muốn rời nhóm này không?')) {
       return;
     }
 
@@ -257,7 +245,7 @@ export default function GroupDetailPage() {
   };
 
   const handleDeleteGroup = async () => {
-    if (!window.confirm(language === 'en' ? 'Are you sure you want to delete this group? This cannot be undone.' : 'Bạn có chắc chắn muốn xóa nhóm này không? Hành động này không thể hoàn tác.')) {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa nhóm này không? Hành động này không thể hoàn tác.')) {
       return;
     }
 
@@ -273,7 +261,7 @@ export default function GroupDetailPage() {
   };
 
   const handleApproveMember = async (targetUserId, fullName) => {
-    if (!window.confirm(language === 'en' ? `Approve ${fullName} to join this group?` : `Bạn có chắc chắn muốn duyệt ${fullName} vào nhóm không?`)) {
+    if (!window.confirm(`Bạn có chắc chắn muốn duyệt ${fullName} vào nhóm không?`)) {
       return;
     }
 
@@ -281,7 +269,7 @@ export default function GroupDetailPage() {
       setIsProcessingAction(true);
       await approveGroupMember(groupId, targetUserId, user.id);
       await loadGroupDetail();
-      setActionMessage(language === 'en' ? 'Membership request approved.' : 'Đã duyệt yêu cầu tham gia nhóm.');
+      setActionMessage('Đã duyệt yêu cầu tham gia nhóm.');
       setPageError('');
     } catch (error) {
       setPageError(error.message || 'Không thể duyệt thành viên lúc này.');
@@ -306,7 +294,7 @@ export default function GroupDetailPage() {
 
     const trimmedReason = rejectReason.trim();
     if (!trimmedReason) {
-      setPageError(language === 'en' ? 'Please enter a reason for rejection.' : 'Vui lòng nhập lý do từ chối.');
+      setPageError('Vui lòng nhập lý do từ chối.');
       return;
     }
 
@@ -317,7 +305,7 @@ export default function GroupDetailPage() {
         reason: trimmedReason,
       });
       await loadGroupDetail();
-      setActionMessage(language === 'en' ? 'Membership request rejected.' : 'Đã từ chối yêu cầu tham gia nhóm.');
+      setActionMessage('Đã từ chối yêu cầu tham gia nhóm.');
       setPageError('');
       setRejectModalMember(null);
       setRejectReason('');
@@ -344,7 +332,7 @@ export default function GroupDetailPage() {
   };
 
   const handleDeletePost = async (postId) => {
-    if (!window.confirm(language === 'en' ? 'Are you sure you want to delete this post?' : 'Bạn có chắc chắn muốn xóa bài viết này không?')) {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa bài viết này không?')) {
       return;
     }
 
@@ -376,7 +364,7 @@ export default function GroupDetailPage() {
             onClick={() => navigate('/groups')}
             className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
           >
-            ← {t('group.back')}
+            ← Quay lại Nhóm học tập
           </button>
 
           <section className="rounded-[32px] bg-white p-6 shadow-sm">
@@ -390,7 +378,7 @@ export default function GroupDetailPage() {
               </span>
               <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-2">
                 <Users className="h-4 w-4" />
-                {groupDetail?.group.memberCount} {t('group.members')}
+                {groupDetail?.group.memberCount} thành viên
               </span>
             </div>
 
@@ -401,7 +389,7 @@ export default function GroupDetailPage() {
                 className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
               >
                 <Plus className="h-4 w-4" />
-                {t('feed.createPost')}
+                Đăng bài
               </button>
             )}
 
@@ -414,7 +402,7 @@ export default function GroupDetailPage() {
                   className="flex w-full items-center justify-center gap-2 rounded-full bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Trash2 className="h-4 w-4" />
-                  {t('group.delete')}
+                  Xóa nhóm
                 </button>
               )}
 
@@ -426,14 +414,14 @@ export default function GroupDetailPage() {
                   className="flex w-full items-center justify-center gap-2 rounded-full bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <LogOut className="h-4 w-4" />
-                  {t('group.leave')}
+                  Rời nhóm
                 </button>
               )}
             </div>
           </section>
 
           <section className="rounded-[32px] bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">{t('group.featuredMembers')}</h2>
+            <h2 className="text-lg font-semibold text-slate-900">Thành viên nổi bật</h2>
             <div className="mt-4 space-y-3">
               {groupDetail?.members.map((member) => (
                 <button
@@ -536,14 +524,14 @@ export default function GroupDetailPage() {
 
           {isJoined && (
             <div ref={composerRef} className="rounded-[32px] bg-white p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-slate-900">{t('group.newPost')}</h3>
-              <p className="mt-1 text-sm text-slate-500">{t('group.newPostDesc')}</p>
+              <h3 className="text-lg font-semibold text-slate-900">Tạo bài đăng mới</h3>
+              <p className="mt-1 text-sm text-slate-500">Đăng bài tập, câu hỏi, thảo luận hoặc tài liệu để cả nhóm cùng trao đổi.</p>
               <div className="mt-4 rounded-3xl border border-slate-200 bg-slate-50 transition focus-within:border-indigo-300 focus-within:bg-white">
                 <textarea
                   value={composerContent}
                   onChange={(event) => setComposerContent(event.target.value)}
                   rows={1}
-                  placeholder={t('group.newPostPlaceholder')}
+                  placeholder="Viết nội dung bạn muốn chia sẻ với nhóm..."
                   className="w-full resize-none rounded-t-3xl bg-transparent px-5 pt-4 pb-3 text-sm text-slate-700 outline-none"
                 />
                 <div className="flex items-center justify-end px-4 pb-3">
@@ -595,13 +583,13 @@ export default function GroupDetailPage() {
               <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-wrap gap-2">
                   {POST_TYPES.map((item) => (
-                    <button
-                      key={item.value}
-                      type="button"
-                      onClick={() => setComposerType(item.value)}
-                      className={`rounded-full px-4 py-2 text-sm font-semibold transition ${composerType === item.value ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                    >
-                      {language === 'en' ? item.labelEn : item.labelVi}
+                  <button
+                    key={item.value}
+                    type="button"
+                    onClick={() => setComposerType(item.value)}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold transition ${composerType === item.value ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                  >
+                      {item.label}
                     </button>
                   ))}
                 </div>
@@ -612,7 +600,7 @@ export default function GroupDetailPage() {
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Plus className="h-4 w-4" />
-                  {isSubmittingPost ? t('feed.posting') : t('feed.createPost')}
+                  {isSubmittingPost ? 'Đang đăng...' : 'Đăng bài'}
                 </button>
               </div>
             </div>
@@ -651,7 +639,7 @@ export default function GroupDetailPage() {
                     )}
                   </div>
                   <p className="mt-1 text-sm text-slate-500">
-                    {post.authorSchool || t('group.studentLabel')} · {formatTime(post.createdAt)}
+                    {post.authorSchool || 'Sinh viên StudyNet'} · {formatTime(post.createdAt)}
                   </p>
                 </div>
                 {post.authorId === user.id && (
@@ -659,7 +647,7 @@ export default function GroupDetailPage() {
                     post={post}
                     typeOptions={POST_TYPES.map((item) => ({
                       value: item.value,
-                      label: language === 'en' ? item.labelEn : item.labelVi,
+                      label: item.label,
                     }))}
                     renderAttachment={renderAttachment}
                     onSave={(payload) => handleUpdatePost(post.id, payload)}
@@ -668,28 +656,11 @@ export default function GroupDetailPage() {
                 )}
               </div>
 
-              {/* {post.shared && (
-                <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
-                  <Share2 className="h-4 w-4" />
-                  Đã chia sẻ vào {formatTime(post.createdAt)}
-                </div>
-              )} */}
-
-              {shouldRenderPostBody(post) && post.content && (
+              {post.content && (
                 <p className="mt-5 text-[15px] leading-7 text-slate-700">{post.content}</p>
               )}
 
-              {shouldRenderPostBody(post) && renderAttachment(post)}
-
-              {post.sharedPostPreview && (
-                <SharedPostPreview
-                  post={post.sharedPostPreview}
-                  formatTime={formatTime}
-                  typeLabel={typeLabel}
-                  renderAttachment={renderAttachment}
-                  onAuthorClick={(authorId) => navigate(`/profile/${authorId}`)}
-                />
-              )}
+              {renderAttachment(post)}
 
               <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4 text-sm text-slate-500">
                 <div className="flex items-center gap-4">
@@ -698,12 +669,12 @@ export default function GroupDetailPage() {
                     onClick={() => handleReact(post.id)}
                     className={`flex items-center gap-2 rounded-full px-3 py-2 font-semibold transition ${
                       post.currentUserReaction
-                        ? 'bg-rose-50 text-rose-600'
+                        ? 'bg-slate-100 text-yellow-600'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                   >
-                    {post.currentUserReaction ? <Heart className="h-4 w-4 fill-current" /> : <ThumbsUp className="h-4 w-4" />}
-                    {post.reactionCount} {t('group.likes')}
+                    {post.currentUserReaction ? <ThumbsUp className="h-4 w-4 fill-current" /> : <ThumbsUp className="h-4 w-4" />}
+                    {post.reactionCount} lượt thích
                   </button>
                   <button
                     type="button"
@@ -711,19 +682,7 @@ export default function GroupDetailPage() {
                     className="flex items-center gap-2 rounded-full bg-slate-100 px-3 py-2 font-semibold text-slate-600 transition hover:bg-slate-200"
                   >
                     <MessageCircle className="h-4 w-4 text-indigo-500" />
-                    {post.commentCount} {t('group.comments')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => !post.currentUserShared && openShareModal(post)}
-                    className={`flex items-center gap-2 rounded-full px-3 py-2 font-semibold transition ${
-                      post.currentUserShared
-                        ? 'bg-emerald-50 text-emerald-600'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    <Share2 className="h-4 w-4" />
-                    {post.shareCount} Chia sẻ
+                    {post.commentCount} bình luận
                   </button>
                 </div>
                 <button
@@ -731,7 +690,7 @@ export default function GroupDetailPage() {
                   onClick={() => handleToggleComments(post.id)}
                   className="rounded-full bg-slate-100 px-4 py-2 font-semibold text-slate-600 transition hover:bg-slate-200"
                 >
-                  {expandedComments[post.id] ? t('group.hideComments') : t('group.viewDiscussion')}
+                  {expandedComments[post.id] ? 'Ẩn bình luận' : 'Xem thảo luận'}
                 </button>
               </div>
 
@@ -741,14 +700,28 @@ export default function GroupDetailPage() {
                     {(commentsByPost[post.id] ?? []).map((comment) => (
                       <div key={comment.id} className="rounded-2xl bg-white px-4 py-3">
                         <div className="flex items-center justify-between gap-3">
-                          <button
-                            type="button"
-                            onClick={() => navigate(`/profile/${comment.authorId}`)}
-                            className="text-sm font-semibold text-slate-800 transition hover:text-indigo-600"
-                          >
-                            {comment.authorName}
-                          </button>
-                          <p className="text-xs text-slate-400">{formatTime(comment.createdAt)}</p>
+                          <div className="flex min-w-0 items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/profile/${comment.authorId}`)}
+                              className="text-sm font-semibold text-slate-800 transition hover:text-indigo-600"
+                            >
+                              {comment.authorName}
+                            </button>
+                            <p className="text-xs text-slate-400">{formatTime(comment.createdAt)}</p>
+                          </div>
+                          {comment.authorId === user.id && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteComment(post.id, comment.id).catch((error) => {
+                                setPageError(error.message || 'Không thể xóa bình luận lúc này.');
+                              })}
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                              title="Xóa bình luận"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                         <p className="mt-2 text-sm leading-6 text-slate-600">{comment.content}</p>
                       </div>
@@ -759,7 +732,8 @@ export default function GroupDetailPage() {
                     <input
                       value={commentInputs[post.id] ?? ''}
                       onChange={(event) => setCommentInputs((current) => ({ ...current, [post.id]: event.target.value }))}
-                      placeholder={t('group.writeComment')}
+                      onKeyDown={(event) => handleCommentKeyDown(event, post.id)}
+                      placeholder="Viết bình luận của bạn..."
                       className="flex-1 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-indigo-300"
                     />
                     <button
@@ -777,38 +751,22 @@ export default function GroupDetailPage() {
 
           {groupDetail && groupDetail.posts.length === 0 && (
             <div className="rounded-[28px] bg-white px-6 py-10 text-center text-sm text-slate-500 shadow-sm">
-              {isJoined ? t('group.emptyJoined') : t('group.emptyGuest')}
+              {isJoined
+                ? 'Nhóm này chưa có bài viết nào. Hãy bắt đầu bằng bài đăng đầu tiên của bạn.'
+                : 'Nhóm này chưa có bài viết nào. Tham gia nhóm để bắt đầu thảo luận.'}
             </div>
           )}
         </section>
       </main>
-
-      <SharePostModal
-        open={Boolean(shareModalPost)}
-        post={shareModalPost}
-        shareContent={shareContent}
-        onShareContentChange={setShareContent}
-        onClose={closeShareModal}
-        onSubmit={handleSharePost}
-        isSubmitting={isSharingPost}
-        formatTime={formatTime}
-        typeLabel={typeLabel}
-        renderAttachment={renderAttachment}
-        onAuthorClick={(authorId) => navigate(`/profile/${authorId}`)}
-      />
 
       {rejectModalMember && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
           <div className="w-full max-w-xl rounded-[32px] bg-white p-6 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-xl font-bold text-slate-900">
-                  {language === 'en' ? 'Reject join request' : 'Từ chối yêu cầu tham gia'}
-                </h3>
+                <h3 className="text-xl font-bold text-slate-900">Từ chối yêu cầu tham gia</h3>
                 <p className="mt-1 text-sm text-slate-500">
-                  {language === 'en'
-                    ? `Explain why ${rejectModalMember.fullName} cannot join this group.`
-                    : `Hãy cho ${rejectModalMember.fullName} biết vì sao họ chưa thể tham gia nhóm này.`}
+                  {`Hãy cho ${rejectModalMember.fullName} biết vì sao họ chưa thể tham gia nhóm này.`}
                 </p>
               </div>
               <button
@@ -825,7 +783,7 @@ export default function GroupDetailPage() {
                 value={rejectReason}
                 onChange={(event) => setRejectReason(event.target.value)}
                 rows={4}
-                placeholder={language === 'en' ? 'Enter the rejection reason...' : 'Nhập lý do từ chối...'}
+                placeholder="Nhập lý do từ chối..."
                 className="w-full resize-none bg-transparent text-sm leading-6 text-slate-700 outline-none"
               />
             </div>
@@ -836,7 +794,7 @@ export default function GroupDetailPage() {
                 onClick={closeRejectModal}
                 className="rounded-full bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
               >
-                {language === 'en' ? 'Cancel' : 'Hủy'}
+                Hủy
               </button>
               <button
                 type="button"
@@ -844,7 +802,7 @@ export default function GroupDetailPage() {
                 disabled={isProcessingAction}
                 className="rounded-full bg-rose-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isProcessingAction ? (language === 'en' ? 'Submitting...' : 'Đang gửi...') : (language === 'en' ? 'Reject request' : 'Từ chối yêu cầu')}
+                {isProcessingAction ? 'Đang gửi...' : 'Từ chối yêu cầu'}
               </button>
             </div>
           </div>

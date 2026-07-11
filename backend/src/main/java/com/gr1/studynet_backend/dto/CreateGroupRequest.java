@@ -11,9 +11,6 @@ public class CreateGroupRequest {
     @NotBlank(message = "Mô tả nhóm là bắt buộc")
     private String description;
 
-    @NotBlank(message = "Trạng thái nhóm là bắt buộc")
-    private String status;
-
     @jakarta.validation.constraints.NotNull(message = "Người tạo nhóm là bắt buộc")
     private Long creatorId;
 

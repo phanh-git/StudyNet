@@ -6,11 +6,14 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface CommentRepository extends JpaRepository<Comment, Long> {
     // Lấy tất cả bình luận của một bài viết, xếp từ cũ đến mới để đọc theo luồng thời gian
     List<Comment> findByPostIdOrderByCreatedAtAsc(Long postId);
+
+    Optional<Comment> findByIdAndPostId(Long commentId, Long postId);
 
     void deleteByPostIdIn(Collection<Long> postIds);
 }

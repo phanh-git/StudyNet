@@ -74,9 +74,9 @@ public class SampleDataService implements CommandLineRunner {
         User studentThree = createUser("Lê Hoàng Nam", "nam@studynet.com", "ĐH Sư phạm Kỹ thuật", "Kỹ thuật điện", "USER", "12345678");
         userRepository.saveAll(List.of(admin, studentOne, studentTwo, studentThree));
 
-        Group programmingGroup = createGroup("Cộng đồng Lập trình Java", "Nơi chia sẻ bài tập, thuật toán và mẹo Spring Boot.", "PUBLIC", studentOne, programming);
-        Group physicsGroup = createGroup("Ôn tập Vật lý đại cương", "Thảo luận công thức, bài tập và mẹo thi giữa kỳ.", "PUBLIC", studentThree, physics);
-        Group mathGroup = createGroup("Giải tích cùng tiến", "Nhóm học giải tích, đại số tuyến tính và xác suất.", "PUBLIC", studentOne, math);
+        Group programmingGroup = createGroup("Cộng đồng Lập trình Java", "Nơi chia sẻ bài tập, thuật toán và mẹo Spring Boot.", studentOne, programming);
+        Group physicsGroup = createGroup("Ôn tập Vật lý đại cương", "Thảo luận công thức, bài tập và mẹo thi giữa kỳ.", studentThree, physics);
+        Group mathGroup = createGroup("Giải tích cùng tiến", "Nhóm học giải tích, đại số tuyến tính và xác suất.", studentOne, math);
         groupRepository.saveAll(List.of(programmingGroup, physicsGroup, mathGroup));
 
         groupMemberRepository.saveAll(List.of(
@@ -132,12 +132,6 @@ public class SampleDataService implements CommandLineRunner {
             createComment(postThree, studentTwo, "Nếu được bạn up luôn phần bài tập mẫu thì tuyệt vời.")
         ));
 
-        notificationRepository.saveAll(List.of(
-            createNotification(studentOne, studentTwo, "COMMENT", "Trần Thị Bình vừa bình luận bài viết của bạn.", "/feed"),
-            createNotification(studentOne, studentThree, "REACTION", "Lê Hoàng Nam đã thả tim bài viết của bạn.", "/feed"),
-            createNotification(studentTwo, studentOne, "COMMENT", "Nguyễn Văn An đã phản hồi câu hỏi của bạn.", "/feed"),
-            createNotification(studentOne, studentThree, "GROUP_UPDATE", "Nhóm Ôn tập Vật lý đại cương vừa có bài thảo luận mới.", "/groups")
-        ));
     }
 
     public void appendDemoData() {
@@ -164,21 +158,21 @@ public class SampleDataService implements CommandLineRunner {
         User quynh = ensureUser("Trần Ngọc Quỳnh", "quynh@studynet.com", "ĐH Hà Nội", "Ngôn ngữ Anh", "USER", "12345678");
         User longUser = ensureUser("Phạm Hoàng Long", "long@studynet.com", "ĐH FPT", "Kỹ thuật phần mềm", "USER", "12345678");
 
-        Group chemistryGroup = ensureGroup("Phòng Lab Hóa học", "Nhóm chia sẻ báo cáo thí nghiệm, kiến thức hóa vô cơ và hữu cơ.", "PUBLIC", minh, chemistry);
-        Group englishGroup = ensureGroup("English For Study", "Luyện kỹ năng đọc tài liệu học thuật và thuyết trình bằng tiếng Anh.", "PUBLIC", huong, english);
-        Group algorithmsGroup = ensureGroup("Thuật toán từ cơ bản đến nâng cao", "Nơi luyện LeetCode, cấu trúc dữ liệu và phỏng vấn kỹ thuật.", "PUBLIC", an, programming);
-        Group mathGroup = ensureGroup("Bứt tốc Giải tích 1", "Tổng hợp bài tập giới hạn, đạo hàm và tích phân cho sinh viên năm nhất.", "PUBLIC", khoa, math);
-        Group statisticsGroup = ensureGroup("Xác suất thống kê dễ hiểu", "Ôn tập xác suất, biến ngẫu nhiên và bài tập có lời giải từng bước.", "PUBLIC", binh, math);
-        Group oopGroup = ensureGroup("OOP Java từ nền tảng", "Luyện OOP, design pattern cơ bản và các bài lab Java hướng đối tượng.", "PUBLIC", longUser, programming);
-        Group webGroup = ensureGroup("Web Dev Study Hub", "Trao đổi React, Spring Boot, REST API và triển khai đồ án web.", "PUBLIC", tung, programming);
-        Group pythonGroup = ensureGroup("Python ứng dụng cho sinh viên", "Chia sẻ notebook, xử lý dữ liệu và automation bằng Python.", "PUBLIC", tung, programming);
-        Group physicsExamGroup = ensureGroup("Vật lý đại cương 1 - Luyện đề", "Kho đề cương, đề cũ và livestream chữa bài trước kỳ thi.", "PUBLIC", nam, physics);
-        Group chemistryExamGroup = ensureGroup("Hóa hữu cơ ôn thi cuối kỳ", "Nơi hỏi đáp phản ứng, cơ chế và mẹo làm bài nhanh phần hữu cơ.", "PUBLIC", thao, chemistry);
-        Group speakingGroup = ensureGroup("Speaking Club for Students", "Luyện speaking theo chủ đề học thuật, phản xạ và presentation.", "PUBLIC", quynh, english);
-        Group readingGroup = ensureGroup("Reading Academic Papers", "Cùng nhau đọc paper, note từ vựng và kỹ thuật skim-scan.", "PUBLIC", huong, english);
-        Group projectGroup = ensureGroup("Đồ án công nghệ thông tin K17", "Kết nối sinh viên làm đồ án, chia task và review tiến độ hàng tuần.", "PUBLIC", phuc, programming);
-        Group calculusGroup = ensureGroup("Toán cao cấp cho dân kỹ thuật", "Tập trung đại số tuyến tính, giải tích nhiều biến và ứng dụng kỹ thuật.", "PUBLIC", khoa, math);
-        Group internshipGroup = ensureGroup("CV - Phỏng vấn - Intern IT", "Chia sẻ kinh nghiệm viết CV, luyện phỏng vấn và săn thực tập IT.", "PUBLIC", longUser, programming);
+        Group chemistryGroup = ensureGroup("Phòng Lab Hóa học", "Nhóm chia sẻ báo cáo thí nghiệm, kiến thức hóa vô cơ và hữu cơ.", minh, chemistry);
+        Group englishGroup = ensureGroup("English For Study", "Luyện kỹ năng đọc tài liệu học thuật và thuyết trình bằng tiếng Anh.", huong, english);
+        Group algorithmsGroup = ensureGroup("Thuật toán từ cơ bản đến nâng cao", "Nơi luyện LeetCode, cấu trúc dữ liệu và phỏng vấn kỹ thuật.", an, programming);
+        Group mathGroup = ensureGroup("Bứt tốc Giải tích 1", "Tổng hợp bài tập giới hạn, đạo hàm và tích phân cho sinh viên năm nhất.", khoa, math);
+        Group statisticsGroup = ensureGroup("Xác suất thống kê dễ hiểu", "Ôn tập xác suất, biến ngẫu nhiên và bài tập có lời giải từng bước.", binh, math);
+        Group oopGroup = ensureGroup("OOP Java từ nền tảng", "Luyện OOP, design pattern cơ bản và các bài lab Java hướng đối tượng.", longUser, programming);
+        Group webGroup = ensureGroup("Web Dev Study Hub", "Trao đổi React, Spring Boot, REST API và triển khai đồ án web.", tung, programming);
+        Group pythonGroup = ensureGroup("Python ứng dụng cho sinh viên", "Chia sẻ notebook, xử lý dữ liệu và automation bằng Python.", tung, programming);
+        Group physicsExamGroup = ensureGroup("Vật lý đại cương 1 - Luyện đề", "Kho đề cương, đề cũ và livestream chữa bài trước kỳ thi.", nam, physics);
+        Group chemistryExamGroup = ensureGroup("Hóa hữu cơ ôn thi cuối kỳ", "Nơi hỏi đáp phản ứng, cơ chế và mẹo làm bài nhanh phần hữu cơ.", thao, chemistry);
+        Group speakingGroup = ensureGroup("Speaking Club for Students", "Luyện speaking theo chủ đề học thuật, phản xạ và presentation.", quynh, english);
+        Group readingGroup = ensureGroup("Reading Academic Papers", "Cùng nhau đọc paper, note từ vựng và kỹ thuật skim-scan.", huong, english);
+        Group projectGroup = ensureGroup("Đồ án công nghệ thông tin K17", "Kết nối sinh viên làm đồ án, chia task và review tiến độ hàng tuần.", phuc, programming);
+        Group calculusGroup = ensureGroup("Toán cao cấp cho dân kỹ thuật", "Tập trung đại số tuyến tính, giải tích nhiều biến và ứng dụng kỹ thuật.", khoa, math);
+        Group internshipGroup = ensureGroup("CV - Phỏng vấn - Intern IT", "Chia sẻ kinh nghiệm viết CV, luyện phỏng vấn và săn thực tập IT.", longUser, programming);
 
         ensureMembership(minh, chemistryGroup, "GROUP_ADMIN");
         ensureMembership(huong, englishGroup, "GROUP_ADMIN");
@@ -264,11 +258,6 @@ public class SampleDataService implements CommandLineRunner {
         ensurePost(quynh, speakingGroup, english, "ANNOUNCEMENT", "Tối thứ 5 nhóm mình sẽ có buổi mock presentation 15 phút cho từng bạn.");
         ensurePost(nam, physicsExamGroup, physics, "MATERIAL", "Mình đã gom 3 đề cuối kỳ Vật lý đại cương có đáp án để mọi người tải về.");
 
-        ensureNotification(an, huong, "GROUP_UPDATE", "Nhóm English For Study vừa có tài liệu mới dành cho bạn.", "/groups");
-        ensureNotification(binh, minh, "COMMENT", "Đỗ Quang Minh vừa phản hồi thảo luận Hóa học mà bạn đang theo dõi.", "/feed");
-        ensureNotification(nam, an, "INVITE", "Nguyễn Văn An vừa mời bạn tham gia buổi ôn thuật toán tối nay.", "/groups");
-        ensureNotification(longUser, tung, "GROUP_UPDATE", "Nhóm Web Dev Study Hub vừa có câu hỏi mới về deploy dự án.", "/groups");
-        ensureNotification(quynh, huong, "ANNOUNCEMENT", "Speaking Club for Students vừa lên lịch buổi mock presentation mới.", "/groups");
     }
 
     private void repairExistingData() {
@@ -319,13 +308,11 @@ public class SampleDataService implements CommandLineRunner {
             groupMemberRepository.saveAll(members);
         }
 
-        List<Group> allGroups = groupRepository.findAll();
         List<Notification> notifications = notificationRepository.findAll();
         boolean notificationsChanged = false;
         for (Notification notification : notifications) {
-            String inferredTargetUrl = inferNotificationTargetUrl(notification.getMessage(), allGroups);
-            if (inferredTargetUrl != null && !inferredTargetUrl.equals(notification.getTargetUrl())) {
-                notification.setTargetUrl(inferredTargetUrl);
+            if (notification.getIsRead() == null) {
+                notification.setIsRead(false);
                 notificationsChanged = true;
             }
         }
@@ -362,24 +349,6 @@ public class SampleDataService implements CommandLineRunner {
         return "DISCUSSION";
     }
 
-    private String inferNotificationTargetUrl(String message, List<Group> groups) {
-        if (message == null || message.isBlank()) {
-            return null;
-        }
-
-        String normalizedMessage = message.toLowerCase(Locale.ROOT);
-        if (normalizedMessage.contains("nhóm")) {
-            for (Group group : groups) {
-                if (normalizedMessage.contains(group.getName().toLowerCase(Locale.ROOT))) {
-                    return "/groups/" + group.getId();
-                }
-            }
-            return "/groups";
-        }
-
-        return "/feed";
-    }
-
     private Subject createSubject(String name, String code) {
         Subject subject = new Subject();
         subject.setName(name);
@@ -398,11 +367,10 @@ public class SampleDataService implements CommandLineRunner {
         return user;
     }
 
-    private Group createGroup(String name, String description, String status, User creator, Subject subject) {
+    private Group createGroup(String name, String description, User creator, Subject subject) {
         Group group = new Group();
         group.setName(name);
         group.setDescription(description);
-        group.setStatus(status);
         group.setCreator(creator);
         group.setSubject(subject);
         return group;
@@ -443,17 +411,6 @@ public class SampleDataService implements CommandLineRunner {
         return comment;
     }
 
-    private Notification createNotification(User receiver, User sender, String type, String message, String targetUrl) {
-        Notification notification = new Notification();
-        notification.setReceiver(receiver);
-        notification.setSender(sender);
-        notification.setType(type);
-        notification.setMessage(message);
-        notification.setTargetUrl(targetUrl);
-        notification.setIsRead(false);
-        return notification;
-    }
-
     private Subject findSubject(String code) {
         return subjectRepository.findAll().stream()
             .filter(subject -> code.equals(subject.getCode()))
@@ -470,11 +427,11 @@ public class SampleDataService implements CommandLineRunner {
         return userRepository.findByEmail(email).orElseGet(() -> userRepository.save(createUser(fullName, email, school, major, role, rawPassword)));
     }
 
-    private Group ensureGroup(String name, String description, String status, User creator, Subject subject) {
+    private Group ensureGroup(String name, String description, User creator, Subject subject) {
         return groupRepository.findByNameContainingIgnoreCase(name).stream()
             .filter(group -> group.getName().equalsIgnoreCase(name))
             .findFirst()
-            .orElseGet(() -> groupRepository.save(createGroup(name, description, status, creator, subject)));
+            .orElseGet(() -> groupRepository.save(createGroup(name, description, creator, subject)));
     }
 
     private void ensureMembership(User user, Group group, String role) {
@@ -505,11 +462,4 @@ public class SampleDataService implements CommandLineRunner {
         }
     }
 
-    private void ensureNotification(User receiver, User sender, String type, String message, String targetUrl) {
-        boolean exists = notificationRepository.findByReceiverIdOrderByCreatedAtDesc(receiver.getId()).stream()
-            .anyMatch(notification -> message.equals(notification.getMessage()));
-        if (!exists) {
-            notificationRepository.save(createNotification(receiver, sender, type, message, targetUrl));
-        }
-    }
 }

@@ -104,7 +104,6 @@ public class AdminService {
             group.getName(),
             group.getSubject() != null ? group.getSubject().getName() : null,
             group.getCreator() != null ? group.getCreator().getFullName() : null,
-            group.getStatus(),
             groupMemberRepository.countByGroupIdAndMembershipStatus(group.getId(), "APPROVED"),
             postRepository.countByGroupId(group.getId()),
             group.getCreatedAt()

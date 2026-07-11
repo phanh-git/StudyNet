@@ -12,7 +12,6 @@ public class AdminGroupRowResponse {
     private String name;
     private String subjectName;
     private String creatorName;
-    private String status;
     private long memberCount;
     private long postCount;
     private LocalDateTime createdAt;

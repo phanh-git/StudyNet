@@ -91,10 +91,9 @@ export function addComment(postId, payload) {
   });
 }
 
-export function sharePost(postId, payload) {
-  return request(`/posts/${postId}/share`, {
-    method: 'POST',
-    body: JSON.stringify(payload),
+export function deleteComment(postId, commentId, userId) {
+  return request(`/posts/${postId}/comments/${commentId}?userId=${userId}`, {
+    method: 'DELETE',
   });
 }
 
@@ -178,22 +177,6 @@ export function fetchUserProfile(userId) {
 export function fetchUserPosts(userId, currentUserId) {
   const query = currentUserId ? `?currentUserId=${currentUserId}` : '';
   return request(`/users/${userId}/posts${query}`);
-}
-
-export function fetchAdminOverview() {
-  return request('/admin/overview');
-}
-
-export function fetchAdminUsers() {
-  return request('/admin/users');
-}
-
-export function fetchAdminGroups() {
-  return request('/admin/groups');
-}
-
-export function fetchAdminPosts() {
-  return request('/admin/posts');
 }
 
 export function seedSampleData() {

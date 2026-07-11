@@ -39,10 +39,6 @@ public class Post {
     @JoinColumn(name = "subject_id") // Cho phép null nếu không tag môn học
     private Subject subject;
 
-    @ManyToOne
-    @JoinColumn(name = "shared_post_id")
-    private Post sharedPost;
-
     private LocalDateTime createdAt;
 
     @PrePersist

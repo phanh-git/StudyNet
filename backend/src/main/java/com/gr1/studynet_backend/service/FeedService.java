@@ -12,7 +12,6 @@ import com.gr1.studynet_backend.dto.GroupResponse;
 import com.gr1.studynet_backend.dto.NotificationResponse;
 import com.gr1.studynet_backend.dto.ReactionRequest;
 import com.gr1.studynet_backend.dto.ReactionSummaryResponse;
-import com.gr1.studynet_backend.dto.SharePostRequest;
 import com.gr1.studynet_backend.dto.UpdatePostRequest;
 import com.gr1.studynet_backend.model.Comment;
 import com.gr1.studynet_backend.model.Group;
@@ -35,14 +34,20 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.text.Normalizer;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class FeedService {
+    private static final Set<String> IMPORTANT_NOTIFICATION_TYPES = Set.of(
+        "GROUP_REQUEST",
+        "GROUP_REQUEST_APPROVED",
+        "GROUP_REQUEST_REJECTED"
+    );
+
     private final SubjectRepository subjectRepository;
     private final PostRepository postRepository;
     private final GroupMemberRepository groupMemberRepository;
@@ -57,10 +62,14 @@ public class FeedService {
     }
 
     public List<FeedPostResponse> getFeed(Long subjectId, String keyword, String type, String sortBy, Long currentUserId) {
+        if (currentUserId == null) {
+            return List.of();
+        }
+
         String normalizedType = normalizeNullable(type);
         String normalizedKeyword = keyword == null ? "" : keyword.trim().toLowerCase(Locale.ROOT);
 
-        List<Post> posts = postRepository.findFilteredPublicPosts(subjectId, normalizedType);
+        List<Post> posts = postRepository.findFeedPostsForUser(currentUserId, subjectId, normalizedType);
 
         List<FeedPostResponse> mappedPosts = posts.stream()
             .filter(post -> normalizedKeyword.isBlank() || matchesKeyword(post, normalizedKeyword))
@@ -83,7 +92,10 @@ public class FeedService {
     }
 
     public long getUnreadNotificationCount(Long userId) {
-        return notificationRepository.countByReceiverIdAndIsReadFalse(userId);
+        return notificationRepository.findByReceiverIdOrderByCreatedAtDesc(userId).stream()
+            .filter(notification -> !Boolean.TRUE.equals(notification.getIsRead()))
+            .filter(notification -> IMPORTANT_NOTIFICATION_TYPES.contains(notification.getType()))
+            .count();
     }
 
     public GroupPageResponse getAllGroups(Long userId, Long subjectId, String keyword, int page, int size) {
@@ -129,7 +141,6 @@ public class FeedService {
         Group group = new Group();
         group.setName(request.getName().trim());
         group.setDescription(request.getDescription().trim());
-        group.setStatus(request.getStatus().trim().toUpperCase(Locale.ROOT));
         group.setCreator(creator);
         group.setSubject(subject);
 
@@ -193,11 +204,6 @@ public class FeedService {
             .toList();
 
         if (!postIds.isEmpty()) {
-            List<Post> sharedCopies = postRepository.findBySharedPostIdIn(postIds);
-            if (!sharedCopies.isEmpty()) {
-                sharedCopies.forEach(post -> post.setSharedPost(null));
-                postRepository.saveAll(sharedCopies);
-            }
             reactionRepository.deleteByPostIdIn(postIds);
             commentRepository.deleteByPostIdIn(postIds);
             postRepository.deleteByGroupId(groupId);
@@ -260,6 +266,14 @@ public class FeedService {
         pendingMembership.setMembershipStatus("APPROVED");
         pendingMembership.setRole("MEMBER");
         groupMemberRepository.save(pendingMembership);
+
+        Notification notification = createNotification(
+            pendingMembership.getUser(),
+            adminMembership.getUser(),
+            "GROUP_REQUEST_APPROVED",
+            "Yêu cầu tham gia nhóm " + pendingMembership.getGroup().getName() + " của bạn đã được duyệt."
+        );
+        notificationRepository.save(notification);
     }
 
     @Transactional
@@ -280,13 +294,13 @@ public class FeedService {
             pendingMembership.getUser(),
             adminMembership.getUser(),
             "GROUP_REQUEST_REJECTED",
-            "Yêu cầu tham gia nhóm " + pendingMembership.getGroup().getName() + " của bạn đã bị từ chối. Lý do: " + reason.trim(),
-            "/groups"
+            "Yêu cầu tham gia nhóm " + pendingMembership.getGroup().getName() + " của bạn đã bị từ chối. Lý do: " + reason.trim()
         );
         notificationRepository.save(notification);
         groupMemberRepository.delete(pendingMembership);
     }
 
+    @Transactional
     public FeedPostResponse createPost(CreatePostRequest request) {
         User user = userRepository.findById(request.getUserId())
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng."));
@@ -355,12 +369,12 @@ public class FeedService {
 
     public List<NotificationResponse> getNotifications(Long userId) {
         return notificationRepository.findByReceiverIdOrderByCreatedAtDesc(userId).stream()
+            .filter(notification -> IMPORTANT_NOTIFICATION_TYPES.contains(notification.getType()))
             .map(notification -> new NotificationResponse(
                 notification.getId(),
                 notification.getType(),
                 notification.getMessage(),
                 notification.getSender() != null ? notification.getSender().getFullName() : null,
-                notification.getTargetUrl(),
                 notification.getIsRead(),
                 notification.getCreatedAt()
             ))
@@ -409,34 +423,6 @@ public class FeedService {
         );
     }
 
-    public FeedPostResponse sharePost(Long postId, SharePostRequest request) {
-        Post sourcePost = postRepository.findById(postId)
-            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài viết."));
-        User user = userRepository.findById(request.getUserId())
-            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng."));
-
-        if (postRepository.existsByUserIdAndSharedPostId(user.getId(), sourcePost.getId())) {
-            throw new IllegalArgumentException("Bạn đã chia sẻ bài viết này về trang cá nhân rồi.");
-        }
-
-        String normalizedContent = request.getContent() != null && !request.getContent().trim().isBlank()
-            ? request.getContent().trim()
-            : null;
-
-        Post sharedPost = new Post();
-        sharedPost.setContent(normalizedContent);
-        sharedPost.setFileUrl(null);
-        sharedPost.setFileName(null);
-        sharedPost.setFileType(null);
-        sharedPost.setType(sourcePost.getType());
-        sharedPost.setUser(user);
-        sharedPost.setSubject(sourcePost.getSubject());
-        sharedPost.setSharedPost(sourcePost);
-
-        Post savedPost = postRepository.save(sharedPost);
-        return mapPost(savedPost, user.getId());
-    }
-
     @Transactional
     public void deletePost(Long postId, Long userId) {
         Post post = postRepository.findById(postId)
@@ -446,14 +432,8 @@ public class FeedService {
             throw new IllegalArgumentException("Chỉ người đăng mới có thể xóa bài viết này.");
         }
 
-        List<Post> sharedCopies = postRepository.findBySharedPostIdIn(Collections.singletonList(postId));
-        if (!sharedCopies.isEmpty()) {
-            sharedCopies.forEach(sharedCopy -> sharedCopy.setSharedPost(null));
-            postRepository.saveAll(sharedCopies);
-        }
-
-        reactionRepository.deleteByPostIdIn(Collections.singletonList(postId));
-        commentRepository.deleteByPostIdIn(Collections.singletonList(postId));
+        reactionRepository.deleteByPostIdIn(List.of(postId));
+        commentRepository.deleteByPostIdIn(List.of(postId));
         postRepository.delete(post);
     }
 
@@ -493,6 +473,18 @@ public class FeedService {
         );
     }
 
+    @Transactional
+    public void deleteComment(Long postId, Long commentId, Long userId) {
+        Comment comment = commentRepository.findByIdAndPostId(commentId, postId)
+            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bình luận."));
+
+        if (!comment.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("Chỉ người viết mới có thể xóa bình luận này.");
+        }
+
+        commentRepository.delete(comment);
+    }
+
     private boolean matchesKeyword(Post post, String keyword) {
         return contains(post.getContent(), keyword)
             || contains(post.getUser().getFullName(), keyword)
@@ -520,23 +512,21 @@ public class FeedService {
             return;
         }
 
-        String targetUrl = "/groups/" + group.getId();
         String message = requester.getFullName() + " vừa gửi yêu cầu tham gia nhóm " + group.getName() + ".";
 
         List<Notification> notifications = adminMembers.stream()
-            .map(member -> createNotification(member.getUser(), requester, "GROUP_REQUEST", message, targetUrl))
+            .map(member -> createNotification(member.getUser(), requester, "GROUP_REQUEST", message))
             .toList();
 
         notificationRepository.saveAll(notifications);
     }
 
-    private Notification createNotification(User receiver, User sender, String type, String message, String targetUrl) {
+    private Notification createNotification(User receiver, User sender, String type, String message) {
         Notification notification = new Notification();
         notification.setReceiver(receiver);
         notification.setSender(sender);
         notification.setType(type);
         notification.setMessage(message);
-        notification.setTargetUrl(targetUrl);
         notification.setIsRead(false);
         return notification;
     }
@@ -596,7 +586,6 @@ public class FeedService {
             group.getId(),
             group.getName(),
             group.getDescription(),
-            group.getStatus(),
             role,
             group.getSubject() != null ? group.getSubject().getName() : null,
             group.getSubject() != null ? group.getSubject().getId() : null,
@@ -608,15 +597,6 @@ public class FeedService {
     }
 
     private FeedPostResponse mapPost(Post post, Long currentUserId) {
-        return mapPost(post, currentUserId, 3);
-    }
-
-    private FeedPostResponse mapPost(Post post, Long currentUserId, int remainingSharedDepth) {
-        Post sharedSource = post.getSharedPost();
-        FeedPostResponse sharedPostPreview = sharedSource != null && remainingSharedDepth > 0
-            ? mapPost(sharedSource, currentUserId, remainingSharedDepth - 1)
-            : null;
-
         return FeedPostResponse.builder()
             .id(post.getId())
             .authorId(post.getUser().getId())
@@ -629,20 +609,13 @@ public class FeedService {
             .authorName(post.getUser().getFullName())
             .authorEmail(post.getUser().getEmail())
             .authorSchool(post.getUser().getSchool())
-            .shared(sharedSource != null)
-            .sharedPostId(sharedSource != null ? sharedSource.getId() : null)
-            .sharedAuthorId(sharedSource != null ? sharedSource.getUser().getId() : null)
-            .sharedAuthorName(sharedSource != null ? sharedSource.getUser().getFullName() : null)
             .groupName(post.getGroup() != null ? post.getGroup().getName() : null)
             .subjectName(post.getSubject() != null ? post.getSubject().getName() : null)
             .reactionCount(reactionRepository.countByPostId(post.getId()))
             .commentCount(commentRepository.findByPostIdOrderByCreatedAtAsc(post.getId()).size())
-            .shareCount(postRepository.countBySharedPostId(post.getId()))
-            .currentUserShared(currentUserId != null && postRepository.existsByUserIdAndSharedPostId(currentUserId, post.getId()))
             .currentUserReaction(currentUserId != null
                 ? reactionRepository.findByPostIdAndUserId(post.getId(), currentUserId).map(Reaction::getType).orElse(null)
                 : null)
-            .sharedPostPreview(sharedPostPreview)
             .build();
     }
 }

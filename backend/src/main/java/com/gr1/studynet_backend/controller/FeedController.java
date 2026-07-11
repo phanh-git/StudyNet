@@ -14,7 +14,6 @@ import com.gr1.studynet_backend.model.Subject;
 import com.gr1.studynet_backend.dto.ReactionRequest;
 import com.gr1.studynet_backend.dto.ReactionSummaryResponse;
 import com.gr1.studynet_backend.dto.RejectGroupMemberRequest;
-import com.gr1.studynet_backend.dto.SharePostRequest;
 import com.gr1.studynet_backend.dto.UpdatePostRequest;
 import com.gr1.studynet_backend.service.FeedService;
 import jakarta.validation.Valid;
@@ -148,11 +147,6 @@ public class FeedController {
         return feedService.reactToPost(postId, request);
     }
 
-    @PostMapping("/posts/{postId}/share")
-    public FeedPostResponse sharePost(@PathVariable Long postId, @Valid @RequestBody SharePostRequest request) {
-        return feedService.sharePost(postId, request);
-    }
-
     @PatchMapping("/posts/{postId}")
     public FeedPostResponse updatePost(@PathVariable Long postId, @Valid @RequestBody UpdatePostRequest request) {
         return feedService.updatePost(postId, request);
@@ -171,5 +165,14 @@ public class FeedController {
     @PostMapping("/posts/{postId}/comments")
     public CommentResponse addComment(@PathVariable Long postId, @Valid @RequestBody CommentRequest request) {
         return feedService.addComment(postId, request);
+    }
+
+    @DeleteMapping("/posts/{postId}/comments/{commentId}")
+    public void deleteComment(
+        @PathVariable Long postId,
+        @PathVariable Long commentId,
+        @RequestParam Long userId
+    ) {
+        feedService.deleteComment(postId, commentId, userId);
     }
 }

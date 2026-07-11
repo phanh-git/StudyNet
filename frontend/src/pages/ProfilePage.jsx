@@ -1,28 +1,14 @@
 import { useEffect, useState } from 'react';
-import { BookOpen, GraduationCap, Heart, MessageCircle, Paperclip, School, Send, Share2, SquarePen, ThumbsUp } from 'lucide-react';
+import { BookOpen, GraduationCap, Heart, MessageCircle, Paperclip, School, Send, SquarePen, ThumbsUp, Trash2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PostOwnerMenu from '../components/PostOwnerMenu';
-import SharePostModal from '../components/SharePostModal';
-import SharedPostPreview, { shouldRenderPostBody } from '../components/SharedPostPreview';
 import StudentNavbar from '../components/StudentNavbar';
 import { useAuth } from '../context/AuthContext';
-import { useSettings } from '../context/SettingsContext';
-import { addComment, deletePost, fetchComments, fetchUserPosts, fetchUserProfile, reactToPost, sharePost, updatePost } from '../services/api';
+import { addComment, deleteComment, deletePost, fetchComments, fetchUserPosts, fetchUserProfile, reactToPost, updatePost } from '../services/api';
 import { isImageAttachment } from '../utils/postAttachments';
 
 function avatarFromName(name = 'StudyNet User') {
   return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}&backgroundColor=b6e3f4`;
-}
-
-function formatTime(value) {
-  if (!value) return 'Vừa xong';
-  const date = new Date(value);
-  return new Intl.DateTimeFormat('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date);
 }
 
 function renderAttachment(post) {
@@ -50,7 +36,6 @@ function renderAttachment(post) {
 
 export default function ProfilePage() {
   const { user } = useAuth();
-  const { locale } = useSettings();
   const { userId } = useParams();
   const navigate = useNavigate();
   const [searchInput, setSearchInput] = useState('');
@@ -61,16 +46,13 @@ export default function ProfilePage() {
   const [expandedComments, setExpandedComments] = useState({});
   const [commentsByPost, setCommentsByPost] = useState({});
   const [commentInputs, setCommentInputs] = useState({});
-  const [shareModalPost, setShareModalPost] = useState(null);
-  const [shareContent, setShareContent] = useState('');
-  const [isSharingPost, setIsSharingPost] = useState(false);
   const targetUserId = Number(userId ?? user.id);
   const isOwnProfile = targetUserId === user.id;
 
   const formatPostTime = (value) => {
     if (!value) return 'Vừa xong';
     const date = new Date(value);
-    return new Intl.DateTimeFormat(locale, {
+    return new Intl.DateTimeFormat('vi-VN', {
       day: '2-digit',
       month: '2-digit',
       hour: '2-digit',
@@ -147,37 +129,30 @@ export default function ProfilePage() {
     )));
   };
 
-  const openShareModal = (post) => {
-    setShareModalPost(post);
-    setShareContent('');
-    setPageError('');
-  };
-
-  const closeShareModal = () => {
-    if (isSharingPost) return;
-    setShareModalPost(null);
-    setShareContent('');
-  };
-
-  const handleSharePost = async () => {
-    if (!shareModalPost) return;
-
-    try {
-      setIsSharingPost(true);
-      await sharePost(shareModalPost.id, {
-        userId: user.id,
-        content: shareContent,
-      });
-      await loadProfilePosts();
-      setActionMessage('Bài viết đã được chia sẻ về trang cá nhân của bạn.');
-      setPageError('');
-      setShareModalPost(null);
-      setShareContent('');
-    } catch (error) {
-      setPageError(error.message || 'Không thể chia sẻ bài viết lúc này.');
-    } finally {
-      setIsSharingPost(false);
+  const handleDeleteComment = async (postId, commentId) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa bình luận này không?')) {
+      return;
     }
+
+    await deleteComment(postId, commentId, user.id);
+    setCommentsByPost((current) => ({
+      ...current,
+      [postId]: (current[postId] ?? []).filter((comment) => comment.id !== commentId),
+    }));
+    setPosts((current) => current.map((post) => (
+      post.id === postId ? { ...post, commentCount: Math.max(0, post.commentCount - 1) } : post
+    )));
+  };
+
+  const handleCommentKeyDown = (event, postId) => {
+    if (event.key !== 'Enter' || event.shiftKey) {
+      return;
+    }
+
+    event.preventDefault();
+    handleAddComment(postId).catch((error) => {
+      setPageError(error.message || 'Không thể gửi bình luận lúc này.');
+    });
   };
 
   const handleUpdatePost = async (postId, payload) => {
@@ -227,19 +202,8 @@ export default function ProfilePage() {
                 alt={profile?.fullName || user.fullName}
                 className="h-28 w-28 rounded-full bg-indigo-100"
               />
-              <h1 className="mt-4 text-2xl font-bold text-slate-900">{profile?.fullName || user.fullName}</h1>
-              <p className="mt-1 text-sm text-slate-500">{profile?.major || user.major}</p>
-              {isOwnProfile && (
-                <button type="button" className="mt-5 inline-flex items-center gap-2 rounded-full bg-indigo-600 px-5 py-3 text-sm font-semibold text-white">
-                  <SquarePen className="h-4 w-4" />
-                  Chỉnh sửa trang cá nhân
-                </button>
-              )}
-            </div>
-          </section>
-
-          <section className="rounded-[32px] bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">Thông tin cá nhân</h2>
+              <h1 className="mt-4 text-2xl font-bold text-slate-900">{profile?.fullName || user.fullName}</h1>            
+            </div>    
             <div className="mt-5 space-y-3">
               <div className="rounded-3xl bg-slate-50 px-4 py-4 text-sm text-slate-600">
                 <div className="mb-1 flex items-center gap-2 font-semibold text-slate-800">
@@ -267,11 +231,6 @@ export default function ProfilePage() {
         </aside>
 
         <section className="space-y-5">
-          <div className="rounded-[32px] bg-white p-6 shadow-sm">
-            <h2 className="text-2xl font-bold text-slate-900">Bài viết của {profile?.fullName || user.fullName}</h2>
-            <p className="mt-2 text-sm text-slate-500">Không gian chia sẻ, thảo luận và tài liệu học tập cá nhân.</p>
-          </div>
-
           {pageError && (
             <div className="rounded-3xl border border-red-100 bg-red-50 px-5 py-4 text-sm text-red-600">
               {pageError}
@@ -315,6 +274,11 @@ export default function ProfilePage() {
                         {post.subjectName}
                       </span>
                     )}
+                    {post.groupName && (
+                      <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-600">
+                        {post.groupName}
+                      </span>
+                    )}
                   </div>
                   <p className="mt-1 text-sm text-slate-500">{formatPostTime(post.createdAt)}</p>
                 </div>
@@ -329,28 +293,11 @@ export default function ProfilePage() {
                 )}
               </div>
 
-              {/* {post.shared && (
-                <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
-                  <Share2 className="h-4 w-4" />
-                  Đã chia sẻ vào {formatPostTime(post.createdAt)}
-                </div>
-              )} */}
-
-              {shouldRenderPostBody(post) && post.content && (
+              {post.content && (
                 <p className="mt-5 text-[15px] leading-7 text-slate-700">{post.content}</p>
               )}
 
-              {shouldRenderPostBody(post) && renderAttachment(post)}
-
-              {post.sharedPostPreview && (
-                <SharedPostPreview
-                  post={post.sharedPostPreview}
-                  formatTime={formatPostTime}
-                  typeLabel={typeLabel}
-                  renderAttachment={renderAttachment}
-                  onAuthorClick={(authorId) => navigate(`/profile/${authorId}`)}
-                />
-              )}
+              {renderAttachment(post)}
 
               <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4 text-sm text-slate-500">
                 <div className="flex items-center gap-4">
@@ -359,11 +306,11 @@ export default function ProfilePage() {
                     onClick={() => handleReact(post.id)}
                     className={`flex items-center gap-2 rounded-full px-3 py-2 font-semibold transition ${
                       post.currentUserReaction
-                        ? 'bg-rose-50 text-rose-600'
+                        ? 'bg-slate-100 text-yellow-600'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                   >
-                    {post.currentUserReaction ? <Heart className="h-4 w-4 fill-current" /> : <ThumbsUp className="h-4 w-4" />}
+                    {post.currentUserReaction ? <ThumbsUp className="h-4 w-4 fill-current" /> : <ThumbsUp className="h-4 w-4" />}
                     {post.reactionCount} lượt thích
                   </button>
                   <button
@@ -373,18 +320,6 @@ export default function ProfilePage() {
                   >
                     <MessageCircle className="h-4 w-4 text-indigo-500" />
                     {post.commentCount} bình luận
-                  </button>
-                    <button
-                      type="button"
-                      onClick={() => !post.currentUserShared && openShareModal(post)}
-                      className={`flex items-center gap-2 rounded-full px-3 py-2 font-semibold transition ${
-                        post.currentUserShared
-                          ? 'bg-emerald-50 text-emerald-600'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    <Share2 className="h-4 w-4" />
-                    {post.shareCount} chia sẻ
                   </button>
                 </div>
                 <button
@@ -402,14 +337,28 @@ export default function ProfilePage() {
                     {(commentsByPost[post.id] ?? []).map((comment) => (
                       <div key={comment.id} className="rounded-2xl bg-white px-4 py-3">
                         <div className="flex items-center justify-between gap-3">
-                          <button
-                            type="button"
-                            onClick={() => navigate(`/profile/${comment.authorId}`)}
-                            className="text-sm font-semibold text-slate-800 transition hover:text-indigo-600"
-                          >
-                            {comment.authorName}
-                          </button>
-                          <p className="text-xs text-slate-400">{formatPostTime(comment.createdAt)}</p>
+                          <div className="flex min-w-0 items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/profile/${comment.authorId}`)}
+                              className="text-sm font-semibold text-slate-800 transition hover:text-indigo-600"
+                            >
+                              {comment.authorName}
+                            </button>
+                            <p className="text-xs text-slate-400">{formatPostTime(comment.createdAt)}</p>
+                          </div>
+                          {comment.authorId === user.id && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteComment(post.id, comment.id).catch((error) => {
+                                setPageError(error.message || 'Không thể xóa bình luận lúc này.');
+                              })}
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                              title="Xóa bình luận"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                         <p className="mt-2 text-sm leading-6 text-slate-600">{comment.content}</p>
                       </div>
@@ -421,6 +370,7 @@ export default function ProfilePage() {
                       type="text"
                       value={commentInputs[post.id] ?? ''}
                       onChange={(event) => setCommentInputs((current) => ({ ...current, [post.id]: event.target.value }))}
+                      onKeyDown={(event) => handleCommentKeyDown(event, post.id)}
                       placeholder="Viết bình luận..."
                       className="flex-1 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-indigo-300"
                     />
@@ -438,20 +388,6 @@ export default function ProfilePage() {
           ))}
         </section>
       </main>
-
-      <SharePostModal
-        open={Boolean(shareModalPost)}
-        post={shareModalPost}
-        shareContent={shareContent}
-        onShareContentChange={setShareContent}
-        onClose={closeShareModal}
-        onSubmit={handleSharePost}
-        isSubmitting={isSharingPost}
-        formatTime={formatPostTime}
-        typeLabel={typeLabel}
-        renderAttachment={renderAttachment}
-        onAuthorClick={(authorId) => navigate(`/profile/${authorId}`)}
-      />
     </div>
   );
 }

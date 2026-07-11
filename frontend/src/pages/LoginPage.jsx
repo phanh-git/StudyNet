@@ -20,7 +20,7 @@ export default function LoginPage() {
       setIsLoading(true);
       const response = await loginRequest(data);
       login(response.user);
-      navigate(response.user.role === 'ADMIN' ? '/admin' : '/feed');
+      navigate('/feed');
     } catch (error) {
       setLoginError(error.message || 'Đăng nhập thất bại.');
     } finally {
@@ -81,9 +81,6 @@ export default function LoginPage() {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-semibold text-gray-700">Mật khẩu</label>
-                <span className="text-xs text-gray-400 font-medium">
-                  Demo admin: `admin@studynet.com`
-                </span>
               </div>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />

@@ -33,7 +33,6 @@ export default function GroupsPage() {
     description: '',
     subjectId: '',
     customSubjectName: '',
-    status: 'PUBLIC',
   });
 
   useEffect(() => {
@@ -99,7 +98,6 @@ export default function GroupsPage() {
         description: formData.description,
         subjectId: hasSelectedSubject ? Number(formData.subjectId) : null,
         customSubjectName: hasCustomSubject ? formData.customSubjectName.trim() : null,
-        status: formData.status,
         creatorId: user.id,
       });
       setGroups((current) => [created, ...current]);
@@ -108,7 +106,7 @@ export default function GroupsPage() {
         totalItems: current.totalItems + 1,
         joinedCount: current.joinedCount + 1,
       }));
-      setFormData({ name: '', description: '', subjectId: '', customSubjectName: '', status: 'PUBLIC' });
+      setFormData({ name: '', description: '', subjectId: '', customSubjectName: '' });
       setIsAddingCustomSubject(false);
       setIsModalOpen(false);
       navigate(`/groups/${created.id}`);
@@ -134,6 +132,7 @@ export default function GroupsPage() {
         <aside className="space-y-6">
           <section className="rounded-[28px] bg-white p-5 shadow-sm">
             <h2 className="font-semibold text-slate-900">Lọc theo môn học</h2>
+            <p className="text-xs text-slate-500">Hiển thị nhóm theo môn học</p>
             <div className="mt-4 flex flex-wrap items-start gap-2">
               <button
                 type="button"
@@ -206,9 +205,6 @@ export default function GroupsPage() {
                     </div>
                     <p className="mt-3 text-sm leading-6 text-slate-500">{group.description}</p>
                   </div>
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                    {group.status}
-                  </span>
                 </div>
 
                 <div className="mt-5 flex flex-wrap gap-3 text-sm text-slate-500">
@@ -250,7 +246,7 @@ export default function GroupsPage() {
 
           <div className="flex flex-col gap-3 rounded-[28px] bg-white px-5 py-4 shadow-sm md:flex-row md:items-center md:justify-between">
             <p className="text-sm text-slate-500">
-              Trang {pagination.page}/{pagination.totalPages} · Hiển thị {groups.length} trên tổng {pagination.totalItems} nhóm
+              Trang {pagination.page}/{pagination.totalPages} 
             </p>
             <div className="flex items-center gap-3">
               <button
@@ -312,7 +308,7 @@ export default function GroupsPage() {
                 <button
                   type="button"
                   onClick={() => setIsAddingCustomSubject((current) => !current)}
-                  className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 transition hover:bg-slate-200"
+                  className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-slate-200"
                   title="Thêm môn học mới"
                 >
                   <Plus className="h-5 w-5" />
