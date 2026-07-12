@@ -21,7 +21,7 @@ function App() {
         <Route
           path="/feed"
           element={
-            <ProtectedRoute allowRoles={['USER', 'ADMIN']}>
+            <ProtectedRoute allowRoles={['USER']}>
               <FeedPage />
             </ProtectedRoute>
           }
@@ -29,7 +29,7 @@ function App() {
         <Route
           path="/groups"
           element={
-            <ProtectedRoute allowRoles={['USER', 'ADMIN']}>
+            <ProtectedRoute allowRoles={['USER']}>
               <GroupsPage />
             </ProtectedRoute>
           }
@@ -37,7 +37,7 @@ function App() {
         <Route
           path="/groups/:groupId"
           element={
-            <ProtectedRoute allowRoles={['USER', 'ADMIN']}>
+            <ProtectedRoute allowRoles={['USER']}>
               <GroupDetailPage />
             </ProtectedRoute>
           }
@@ -45,7 +45,7 @@ function App() {
         <Route
           path="/profile"
           element={
-            <ProtectedRoute allowRoles={['USER', 'ADMIN']}>
+            <ProtectedRoute allowRoles={['USER']}>
               <ProfilePage />
             </ProtectedRoute>
           }
@@ -53,7 +53,7 @@ function App() {
         <Route
           path="/profile/:userId"
           element={
-            <ProtectedRoute allowRoles={['USER', 'ADMIN']}>
+            <ProtectedRoute allowRoles={['USER']}>
               <ProfilePage />
             </ProtectedRoute>
           }

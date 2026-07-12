@@ -105,28 +105,36 @@ export default function ProfilePage() {
   };
 
   const handleReact = async (postId) => {
-    const summary = await reactToPost(postId, { userId: user.id, type: 'LIKE' });
-    setPosts((current) => current.map((post) => (
-      post.id === postId
-        ? { ...post, reactionCount: summary.reactionCount, currentUserReaction: summary.currentUserReaction }
-        : post
-    )));
+    try {
+      const summary = await reactToPost(postId, { userId: user.id, type: 'LIKE' });
+      setPosts((current) => current.map((post) => (
+        post.id === postId
+          ? { ...post, reactionCount: summary.reactionCount, currentUserReaction: summary.currentUserReaction }
+          : post
+      )));
+    } catch (error) {
+      setPageError(error.message || 'Không thể thả cảm xúc lúc này.');
+    }
   };
 
   const handleAddComment = async (postId) => {
     const content = commentInputs[postId]?.trim();
     if (!content) return;
 
-    const createdComment = await addComment(postId, { userId: user.id, content });
-    setCommentsByPost((current) => ({
-      ...current,
-      [postId]: [...(current[postId] ?? []), createdComment],
-    }));
-    setCommentInputs((current) => ({ ...current, [postId]: '' }));
-    setExpandedComments((current) => ({ ...current, [postId]: true }));
-    setPosts((current) => current.map((post) => (
-      post.id === postId ? { ...post, commentCount: post.commentCount + 1 } : post
-    )));
+    try {
+      const createdComment = await addComment(postId, { userId: user.id, content });
+      setCommentsByPost((current) => ({
+        ...current,
+        [postId]: [...(current[postId] ?? []), createdComment],
+      }));
+      setCommentInputs((current) => ({ ...current, [postId]: '' }));
+      setExpandedComments((current) => ({ ...current, [postId]: true }));
+      setPosts((current) => current.map((post) => (
+        post.id === postId ? { ...post, commentCount: post.commentCount + 1 } : post
+      )));
+    } catch (error) {
+      setPageError(error.message || 'Không thể gửi bình luận lúc này.');
+    }
   };
 
   const handleDeleteComment = async (postId, commentId) => {

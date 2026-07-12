@@ -7,7 +7,6 @@ import { useForm } from 'react-hook-form';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { register as registerRequest } from '../services/api';
-import { useAuth } from '../context/AuthContext';
 
 const STEPS = [
   { title: 'Cá nhân'},
@@ -60,8 +59,8 @@ export default function RegisterPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [submitSuccess, setSubmitSuccess] = useState('');
   const navigate = useNavigate();
-  const { login } = useAuth();
 
   const { register, handleSubmit, watch, trigger, formState: { errors } } = useForm({
     mode: 'onChange',
@@ -88,6 +87,7 @@ export default function RegisterPage() {
   const onSubmit = async (data) => {
     try {
       setSubmitError('');
+      setSubmitSuccess('');
       setIsLoading(true);
       const response = await registerRequest({
         fullName: data.name,
@@ -97,8 +97,10 @@ export default function RegisterPage() {
         password: data.password,
         interestedSubjects: data.interestedSubjects ?? [],
       });
-      login(response.user);
-      navigate('/feed');
+      setSubmitSuccess('Đăng ký thành công! Đang chuyển đến trang đăng nhập...');
+      window.setTimeout(() => {
+        navigate('/login');
+      }, 3000);
     } catch (error) {
       setSubmitError(error.message || 'Đăng ký thất bại.');
     } finally {
@@ -206,24 +208,6 @@ export default function RegisterPage() {
                         </p>
                       )}
                     </div>
-
-                    {name.trim().length >= 2 && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100"
-                      >
-                        <img
-                          src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}&backgroundColor=b6e3f4`}
-                          alt="avatar"
-                          className="w-10 h-10 rounded-full bg-indigo-100"
-                        />
-                        <div>
-                          <p className="text-sm font-medium text-gray-800">Xem trước avatar</p>
-                          <p className="text-xs text-gray-500">Avatar tự động được tạo theo tên của bạn</p>
-                        </div>
-                      </motion.div>
-                    )}
                   </motion.div>
                 )}
 
@@ -274,7 +258,7 @@ export default function RegisterPage() {
                       )}
                     </div>
 
-                    <div>
+                    {/* <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Môn học quan tâm</label>
                       <div className="grid grid-cols-3 gap-2">
                         {SUBJECTS.map((subject) => (
@@ -296,7 +280,7 @@ export default function RegisterPage() {
                           </label>
                         ))}
                       </div>          
-                    </div>
+                    </div> */}
                   </motion.div>
                 )}
 
@@ -386,6 +370,12 @@ export default function RegisterPage() {
                       </p>
                     )}
 
+                    {submitSuccess && (
+                      <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                        {submitSuccess}
+                      </div>
+                    )}
+
                     {submitError && (
                       <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
                         {submitError}
@@ -419,7 +409,7 @@ export default function RegisterPage() {
                 ) : (
                   <button
                     type="submit"
-                    disabled={isLoading}
+                    disabled={isLoading || Boolean(submitSuccess)}
                     className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 active:scale-[0.99] transition-all shadow-lg shadow-indigo-200 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {isLoading ? (

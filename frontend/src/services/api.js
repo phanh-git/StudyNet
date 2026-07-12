@@ -131,6 +131,12 @@ export function joinGroup(groupId, userId) {
   });
 }
 
+export function cancelJoinRequest(groupId, userId) {
+  return request(`/groups/${groupId}/join?userId=${userId}`, {
+    method: 'DELETE',
+  });
+}
+
 export function approveGroupMember(groupId, targetUserId, userId) {
   return request(`/groups/${groupId}/members/${targetUserId}/approve?userId=${userId}`, {
     method: 'PATCH',

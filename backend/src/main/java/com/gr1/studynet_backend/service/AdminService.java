@@ -39,7 +39,7 @@ public class AdminService {
 
         return new AdminOverviewResponse(
             users.size(),
-            users.stream().filter(user -> "ADMIN".equalsIgnoreCase(user.getRole())).count(),
+            0,
             groups.size(),
             postRepository.count(),
             subjectRepository.count(),

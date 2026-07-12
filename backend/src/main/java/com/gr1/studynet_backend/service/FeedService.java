@@ -177,6 +177,22 @@ public class FeedService {
     }
 
     @Transactional
+    public GroupResponse cancelJoinRequest(Long groupId, Long userId) {
+        Group group = groupRepository.findById(groupId)
+            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhóm."));
+        GroupMember membership = groupMemberRepository.findByUserIdAndGroupId(userId, groupId)
+            .orElseThrow(() -> new IllegalArgumentException("Bạn chưa gửi yêu cầu tham gia nhóm này."));
+
+        if (!"PENDING".equalsIgnoreCase(membership.getMembershipStatus())) {
+            throw new IllegalArgumentException("Chỉ có thể hủy yêu cầu đang chờ duyệt.");
+        }
+
+        removePendingJoinNotifications(group, userId);
+        groupMemberRepository.delete(membership);
+        return mapGroup(group, userId, null);
+    }
+
+    @Transactional
     public void leaveGroup(Long groupId, Long userId) {
         GroupMember membership = groupMemberRepository.findByUserIdAndGroupId(userId, groupId)
             .orElseThrow(() -> new IllegalArgumentException("Bạn chưa tham gia nhóm này."));
@@ -401,6 +417,8 @@ public class FeedService {
         User user = userRepository.findById(request.getUserId())
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng."));
 
+        validateApprovedGroupMembership(post, user.getId(), "thả cảm xúc vào bài viết này");
+
         String normalizedType = request.getType().trim().toUpperCase(Locale.ROOT);
         Reaction existing = reactionRepository.findByPostIdAndUserId(postId, user.getId()).orElse(null);
 
@@ -455,6 +473,8 @@ public class FeedService {
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài viết."));
         User user = userRepository.findById(request.getUserId())
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng."));
+
+        validateApprovedGroupMembership(post, user.getId(), "bình luận bài viết này");
 
         Comment comment = new Comment();
         comment.setPost(post);
@@ -519,6 +539,30 @@ public class FeedService {
             .toList();
 
         notificationRepository.saveAll(notifications);
+    }
+
+    private void removePendingJoinNotifications(Group group, Long requesterUserId) {
+        List<Long> adminIds = groupMemberRepository.findByGroupIdAndMembershipStatus(group.getId(), "APPROVED").stream()
+            .filter(member -> "GROUP_ADMIN".equalsIgnoreCase(member.getRole()))
+            .map(member -> member.getUser().getId())
+            .toList();
+
+        if (adminIds.isEmpty()) {
+            return;
+        }
+
+        notificationRepository.deleteBySenderIdAndReceiverIdInAndType(requesterUserId, adminIds, "GROUP_REQUEST");
+    }
+
+    private void validateApprovedGroupMembership(Post post, Long userId, String action) {
+        if (post.getGroup() == null) {
+            return;
+        }
+
+        GroupMember membership = groupMemberRepository.findByUserIdAndGroupId(userId, post.getGroup().getId()).orElse(null);
+        if (membership == null || !"APPROVED".equalsIgnoreCase(membership.getMembershipStatus())) {
+            throw new IllegalArgumentException("Bạn cần được duyệt vào nhóm để " + action + ".");
+        }
     }
 
     private Notification createNotification(User receiver, User sender, String type, String message) {

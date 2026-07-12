@@ -106,6 +106,11 @@ public class FeedController {
         return feedService.joinGroup(groupId, userId);
     }
 
+    @DeleteMapping("/groups/{groupId}/join")
+    public GroupResponse cancelJoinRequest(@PathVariable Long groupId, @RequestParam Long userId) {
+        return feedService.cancelJoinRequest(groupId, userId);
+    }
+
     @PatchMapping("/groups/{groupId}/members/{targetUserId}/approve")
     public void approveGroupMember(
         @PathVariable Long groupId,

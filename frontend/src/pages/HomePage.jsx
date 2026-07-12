@@ -95,7 +95,7 @@ export default function HomePage() {
               <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
                 <Link
                   to="/register"
-                  className="text-lg flex items-center justify-center gap-2 px-8 py-4 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 font-medium"
+                  className="text-lg flex items-center justify-center gap-2 px-8 py-4 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 font-medium"
                 >
                   Tham gia ngay
                   <ArrowRight className="w-6 h-6" />

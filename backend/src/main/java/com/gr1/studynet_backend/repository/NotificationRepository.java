@@ -3,6 +3,7 @@ package com.gr1.studynet_backend.repository;
 import com.gr1.studynet_backend.model.Notification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+
 import java.util.List;
 
 @Repository
@@ -14,4 +15,6 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     long countByReceiverIdAndIsReadFalse(Long receiverId);
 
     java.util.Optional<Notification> findByIdAndReceiverId(Long id, Long receiverId);
+
+    void deleteBySenderIdAndReceiverIdInAndType(Long senderId, List<Long> receiverIds, String type);
 }

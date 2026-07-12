@@ -68,7 +68,7 @@ public class SampleDataService implements CommandLineRunner {
         Subject programming = subjects.stream().filter(subject -> "CS".equals(subject.getCode())).findFirst().orElse(subjects.get(0));
         Subject physics = subjects.stream().filter(subject -> "PHYS".equals(subject.getCode())).findFirst().orElse(subjects.get(0));
 
-        User admin = createUser("Admin StudyNet", "admin@studynet.com", "Đại học Quốc gia TP.HCM", "Quản trị hệ thống", "ADMIN", "12345678");
+        User admin = createUser("Admin StudyNet", "admin@studynet.com", "Đại học Quốc gia TP.HCM", "Quản trị hệ thống", "USER", "12345678");
         User studentOne = createUser("Nguyễn Văn An", "an@studynet.com", "ĐH Bách Khoa Hà Nội", "Khoa học máy tính", "USER", "12345678");
         User studentTwo = createUser("Trần Thị Bình", "binh@studynet.com", "ĐH Khoa học Tự nhiên", "Sư phạm Hóa", "USER", "12345678");
         User studentThree = createUser("Lê Hoàng Nam", "nam@studynet.com", "ĐH Sư phạm Kỹ thuật", "Kỹ thuật điện", "USER", "12345678");
@@ -294,6 +294,18 @@ public class SampleDataService implements CommandLineRunner {
         }
         if (postsChanged) {
             postRepository.saveAll(posts);
+        }
+
+        List<User> users = userRepository.findAll();
+        boolean usersChanged = false;
+        for (User user : users) {
+            if (user.getRole() == null || user.getRole().isBlank() || "ADMIN".equalsIgnoreCase(user.getRole())) {
+                user.setRole("USER");
+                usersChanged = true;
+            }
+        }
+        if (usersChanged) {
+            userRepository.saveAll(users);
         }
 
         List<GroupMember> members = groupMemberRepository.findAll();

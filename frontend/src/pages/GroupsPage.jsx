@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Plus, Users, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import StudentNavbar from '../components/StudentNavbar';
 import { useAuth } from '../context/AuthContext';
-import { createGroup, fetchAllGroups, fetchSubjects, joinGroup } from '../services/api';
+import { cancelJoinRequest, createGroup, fetchAllGroups, fetchSubjects, joinGroup } from '../services/api';
 
 const GROUPS_PAGE_SIZE = 6;
 
@@ -79,6 +79,11 @@ export default function GroupsPage() {
       ...current,
       joinedCount: current.joinedCount + (updated.joined ? 1 : 0),
     }));
+  };
+
+  const handleCancelJoinRequest = async (groupId) => {
+    const updated = await cancelJoinRequest(groupId, user.id);
+    setGroups((current) => current.map((group) => (group.id === groupId ? updated : group)));
   };
 
   const handleCreateGroup = async () => {
@@ -228,18 +233,34 @@ export default function GroupsPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => !group.joined && !group.pending && handleJoinGroup(group.id)}
+                    onClick={() => {
+                      if (group.joined) return;
+                      if (group.pending) {
+                        handleCancelJoinRequest(group.id).catch((error) => {
+                          setPageError(error.message || 'Không thể hủy yêu cầu tham gia nhóm.');
+                        });
+                        return;
+                      }
+                      handleJoinGroup(group.id).catch((error) => {
+                        setPageError(error.message || 'Không thể gửi yêu cầu tham gia nhóm.');
+                      });
+                    }}
                     className={`flex-1 rounded-full px-4 py-3 text-sm font-semibold transition ${
                       group.joined
                         ? 'bg-emerald-50 text-emerald-600'
                         : group.pending
-                          ? 'bg-amber-50 text-amber-600'
+                          ? 'bg-rose-50 text-rose-600 hover:bg-rose-100'
                           : 'bg-indigo-600 text-white hover:bg-indigo-700'
                     }`}
                   >
-                    {group.joined ? 'Đã tham gia' : group.pending ? 'Đang chờ duyệt' : 'Tham gia'}
+                    {group.joined ? 'Đã tham gia' : group.pending ? 'Hủy yêu cầu' : 'Tham gia'}
                   </button>
                 </div>
+                {group.pending && (
+                  <p className="mt-3 text-xs font-medium text-amber-600">
+                    Yêu cầu của bạn đang chờ duyệt.
+                  </p>
+                )}
               </article>
             ))}
           </div>

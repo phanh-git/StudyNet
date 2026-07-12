@@ -29,7 +29,7 @@ public class User {
     private String interestedSubjects;
 
     @Column(nullable = false, length = 10)
-    private String role; // "USER" hoặc "ADMIN"
+    private String role; // hiện chỉ dùng "USER"
 
     private LocalDateTime createdAt;
 

@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import PostOwnerMenu from '../components/PostOwnerMenu';
 import StudentNavbar from '../components/StudentNavbar';
 import { useAuth } from '../context/AuthContext';
-import { addComment, approveGroupMember, createPost, deleteComment, deleteGroup, deletePost, fetchComments, fetchGroupDetail, joinGroup, leaveGroup, reactToPost, rejectGroupMember, updatePost } from '../services/api';
+import { addComment, approveGroupMember, cancelJoinRequest, createPost, deleteComment, deleteGroup, deletePost, fetchComments, fetchGroupDetail, joinGroup, leaveGroup, reactToPost, rejectGroupMember, updatePost } from '../services/api';
 import { isImageAttachment, readFileAsDataUrl } from '../utils/postAttachments';
 
 const POST_TYPES = [
@@ -76,6 +76,17 @@ export default function GroupDetailPage() {
       setPageError('');
     } catch (error) {
       setPageError(error.message || 'Không thể gửi yêu cầu tham gia nhóm.');
+    }
+  };
+
+  const handleCancelJoinRequest = async () => {
+    try {
+      const updatedGroup = await cancelJoinRequest(groupId, user.id);
+      setGroupDetail((current) => current ? { ...current, group: updatedGroup } : current);
+      setPageError('');
+      setActionMessage('Đã hủy yêu cầu tham gia nhóm.');
+    } catch (error) {
+      setPageError(error.message || 'Không thể hủy yêu cầu tham gia nhóm.');
     }
   };
 
@@ -169,34 +180,42 @@ export default function GroupDetailPage() {
   };
 
   const handleReact = async (postId, type = 'LIKE') => {
-    const summary = await reactToPost(postId, { userId: user.id, type });
-    setGroupDetail((current) => current ? {
-      ...current,
-      posts: current.posts.map((post) => (
-        post.id === postId
-          ? { ...post, reactionCount: summary.reactionCount, currentUserReaction: summary.currentUserReaction }
-          : post
-      )),
-    } : current);
+    try {
+      const summary = await reactToPost(postId, { userId: user.id, type });
+      setGroupDetail((current) => current ? {
+        ...current,
+        posts: current.posts.map((post) => (
+          post.id === postId
+            ? { ...post, reactionCount: summary.reactionCount, currentUserReaction: summary.currentUserReaction }
+            : post
+        )),
+      } : current);
+    } catch (error) {
+      setPageError(error.message || 'Không thể thả cảm xúc lúc này.');
+    }
   };
 
   const handleAddComment = async (postId) => {
     const content = commentInputs[postId]?.trim();
     if (!content) return;
 
-    const createdComment = await addComment(postId, { userId: user.id, content });
-    setCommentsByPost((current) => ({
-      ...current,
-      [postId]: [...(current[postId] ?? []), createdComment],
-    }));
-    setCommentInputs((current) => ({ ...current, [postId]: '' }));
-    setExpandedComments((current) => ({ ...current, [postId]: true }));
-    setGroupDetail((current) => current ? {
-      ...current,
-      posts: current.posts.map((post) => (
-        post.id === postId ? { ...post, commentCount: post.commentCount + 1 } : post
-      )),
-    } : current);
+    try {
+      const createdComment = await addComment(postId, { userId: user.id, content });
+      setCommentsByPost((current) => ({
+        ...current,
+        [postId]: [...(current[postId] ?? []), createdComment],
+      }));
+      setCommentInputs((current) => ({ ...current, [postId]: '' }));
+      setExpandedComments((current) => ({ ...current, [postId]: true }));
+      setGroupDetail((current) => current ? {
+        ...current,
+        posts: current.posts.map((post) => (
+          post.id === postId ? { ...post, commentCount: post.commentCount + 1 } : post
+        )),
+      } : current);
+    } catch (error) {
+      setPageError(error.message || 'Không thể gửi bình luận lúc này.');
+    }
   };
 
   const handleDeleteComment = async (postId, commentId) => {
@@ -347,6 +366,7 @@ export default function GroupDetailPage() {
   };
 
   const isJoined = Boolean(groupDetail?.group.joined);
+  const isPending = Boolean(groupDetail?.group.pending);
   const isGroupAdmin = groupDetail?.group.role === 'GROUP_ADMIN';
 
   return (
@@ -394,6 +414,18 @@ export default function GroupDetailPage() {
             )}
 
             <div className="mt-3 space-y-3">
+              {isPending && (
+                <button
+                  type="button"
+                  onClick={handleCancelJoinRequest}
+                  disabled={isProcessingAction}
+                  className="flex w-full items-center justify-center gap-2 rounded-full bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <X className="h-4 w-4" />
+                  Hủy yêu cầu tham gia
+                </button>
+              )}
+
               {isJoined && isGroupAdmin && (
                 <button
                   type="button"
@@ -418,6 +450,12 @@ export default function GroupDetailPage() {
                 </button>
               )}
             </div>
+
+            {!isJoined && isPending && (
+              <p className="mt-3 text-sm text-amber-600">
+                Yêu cầu tham gia của bạn đang chờ trưởng nhóm duyệt.
+              </p>
+            )}
           </section>
 
           <section className="rounded-[32px] bg-white p-6 shadow-sm">
@@ -728,22 +766,30 @@ export default function GroupDetailPage() {
                     ))}
                   </div>
 
-                  <div className="mt-4 flex items-center gap-3">
-                    <input
-                      value={commentInputs[post.id] ?? ''}
-                      onChange={(event) => setCommentInputs((current) => ({ ...current, [post.id]: event.target.value }))}
-                      onKeyDown={(event) => handleCommentKeyDown(event, post.id)}
-                      placeholder="Viết bình luận của bạn..."
-                      className="flex-1 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-indigo-300"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleAddComment(post.id)}
-                      className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-indigo-600 text-white transition hover:bg-indigo-700"
-                    >
-                      <Send className="h-4 w-4" />
-                    </button>
-                  </div>
+                  {isJoined ? (
+                    <div className="mt-4 flex items-center gap-3">
+                      <input
+                        value={commentInputs[post.id] ?? ''}
+                        onChange={(event) => setCommentInputs((current) => ({ ...current, [post.id]: event.target.value }))}
+                        onKeyDown={(event) => handleCommentKeyDown(event, post.id)}
+                        placeholder="Viết bình luận của bạn..."
+                        className="flex-1 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-indigo-300"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAddComment(post.id)}
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-indigo-600 text-white transition hover:bg-indigo-700"
+                      >
+                        <Send className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
+                      {isPending
+                        ? 'Bạn cần chờ yêu cầu tham gia được duyệt trước khi bình luận.'
+                        : 'Tham gia nhóm để bình luận vào bài viết này.'}
+                    </div>
+                  )}
                 </div>
               )}
             </article>

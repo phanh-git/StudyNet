@@ -1,18 +1,30 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BookOpen, Eye, EyeOff, Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { motion } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { login as loginRequest } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const location = useLocation();
   const navigate = useNavigate();
   const { login } = useAuth();
   const { register, handleSubmit, formState: { errors } } = useForm();
+
+  useEffect(() => {
+    const message = location.state?.successMessage;
+    if (!message) {
+      return;
+    }
+
+    setSuccessMessage(message);
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location.pathname, location.state, navigate]);
 
   const handleLogin = async (data) => {
     try {
@@ -113,6 +125,17 @@ export default function LoginPage() {
               >
                 <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
                 <p className="text-red-600 text-sm">{loginError}</p>
+              </motion.div>
+            )}
+
+            {successMessage && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2.5 rounded-xl border border-emerald-100 bg-emerald-50 p-3.5"
+              >
+                <AlertCircle className="h-4 w-4 shrink-0 text-emerald-600" />
+                <p className="text-sm text-emerald-700">{successMessage}</p>
               </motion.div>
             )}
 
