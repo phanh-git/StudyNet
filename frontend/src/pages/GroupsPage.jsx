@@ -41,7 +41,6 @@ export default function GroupsPage() {
 
   useEffect(() => {
     fetchAllGroups({
-      userId: user.id,
       subjectId: selectedSubjectId,
       keyword: searchKeyword,
       page: currentPage,
@@ -73,7 +72,7 @@ export default function GroupsPage() {
   }, [selectedSubjectId, searchKeyword]);
 
   const handleJoinGroup = async (groupId) => {
-    const updated = await joinGroup(groupId, user.id);
+    const updated = await joinGroup(groupId);
     setGroups((current) => current.map((group) => (group.id === groupId ? updated : group)));
     setPagination((current) => ({
       ...current,
@@ -82,7 +81,7 @@ export default function GroupsPage() {
   };
 
   const handleCancelJoinRequest = async (groupId) => {
-    const updated = await cancelJoinRequest(groupId, user.id);
+    const updated = await cancelJoinRequest(groupId);
     setGroups((current) => current.map((group) => (group.id === groupId ? updated : group)));
   };
 
@@ -103,7 +102,6 @@ export default function GroupsPage() {
         description: formData.description,
         subjectId: hasSelectedSubject ? Number(formData.subjectId) : null,
         customSubjectName: hasCustomSubject ? formData.customSubjectName.trim() : null,
-        creatorId: user.id,
       });
       setGroups((current) => [created, ...current]);
       setPagination((current) => ({

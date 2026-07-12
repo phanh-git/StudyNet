@@ -70,7 +70,6 @@ export default function FeedPage() {
         keyword: searchKeyword,
         type: postType,
         sortBy,
-        currentUserId: user.id,
       });
       setPosts(nextPosts);
     } catch (error) {
@@ -81,7 +80,7 @@ export default function FeedPage() {
   };
 
   useEffect(() => {
-    Promise.all([fetchSubjects(), fetchUserGroups(user.id)])
+    Promise.all([fetchSubjects(), fetchUserGroups()])
       .then(([subjectItems, userGroups]) => {
         setSubjects(subjectItems);
         setGroups(userGroups);
@@ -135,7 +134,7 @@ export default function FeedPage() {
 
   const handleReact = async (postId) => {
     try {
-      const summary = await reactToPost(postId, { userId: user.id, type: 'LIKE' });
+      const summary = await reactToPost(postId, { type: 'LIKE' });
       setPosts((current) => current.map((post) => (
         post.id === postId
           ? { ...post, reactionCount: summary.reactionCount, currentUserReaction: summary.currentUserReaction }
@@ -151,7 +150,7 @@ export default function FeedPage() {
     if (!content) return;
 
     try {
-      const createdComment = await addComment(postId, { userId: user.id, content });
+      const createdComment = await addComment(postId, { content });
       setCommentsByPost((current) => ({
         ...current,
         [postId]: [...(current[postId] ?? []), createdComment],
@@ -171,7 +170,7 @@ export default function FeedPage() {
       return;
     }
 
-    await deleteComment(postId, commentId, user.id);
+    await deleteComment(postId, commentId);
     setCommentsByPost((current) => ({
       ...current,
       [postId]: (current[postId] ?? []).filter((comment) => comment.id !== commentId),
@@ -196,7 +195,6 @@ export default function FeedPage() {
     try {
       await updatePost(postId, {
         ...payload,
-        userId: user.id,
       });
       await loadFeed();
       setActionMessage('Bài viết đã được cập nhật.');
@@ -213,7 +211,7 @@ export default function FeedPage() {
     }
 
     try {
-      await deletePost(postId, user.id);
+      await deletePost(postId);
       await loadFeed();
       setActionMessage('Bài viết đã được xóa.');
       setPageError('');

@@ -46,10 +46,9 @@ public class FeedController {
         @RequestParam(required = false) Long subjectId,
         @RequestParam(required = false) String keyword,
         @RequestParam(required = false) String type,
-        @RequestParam(required = false) String sortBy,
-        @RequestParam(required = false) Long currentUserId
+        @RequestParam(required = false) String sortBy
     ) {
-        return feedService.getFeed(subjectId, keyword, type, sortBy, currentUserId);
+        return feedService.getFeed(subjectId, keyword, type, sortBy);
     }
 
     @PostMapping("/feed")
@@ -57,35 +56,34 @@ public class FeedController {
         return feedService.createPost(request);
     }
 
-    @GetMapping("/users/{userId}/groups")
-    public List<GroupResponse> getUserGroups(@PathVariable Long userId) {
-        return feedService.getUserGroups(userId);
+    @GetMapping("/users/me/groups")
+    public List<GroupResponse> getUserGroups() {
+        return feedService.getUserGroups();
     }
 
-    @GetMapping("/users/{userId}/notifications/unread-count")
-    public NotificationSummaryResponse getUnreadNotifications(@PathVariable Long userId) {
-        return new NotificationSummaryResponse(feedService.getUnreadNotificationCount(userId));
+    @GetMapping("/users/me/notifications/unread-count")
+    public NotificationSummaryResponse getUnreadNotifications() {
+        return new NotificationSummaryResponse(feedService.getUnreadNotificationCount());
     }
 
-    @GetMapping("/users/{userId}/notifications")
-    public List<NotificationResponse> getNotifications(@PathVariable Long userId) {
-        return feedService.getNotifications(userId);
+    @GetMapping("/users/me/notifications")
+    public List<NotificationResponse> getNotifications() {
+        return feedService.getNotifications();
     }
 
-    @PatchMapping("/users/{userId}/notifications/{notificationId}/read")
-    public void markNotificationAsRead(@PathVariable Long userId, @PathVariable Long notificationId) {
-        feedService.markNotificationAsRead(userId, notificationId);
+    @PatchMapping("/users/me/notifications/{notificationId}/read")
+    public void markNotificationAsRead(@PathVariable Long notificationId) {
+        feedService.markNotificationAsRead(notificationId);
     }
 
     @GetMapping("/groups")
     public GroupPageResponse getGroups(
-        @RequestParam(required = false) Long userId,
         @RequestParam(required = false) Long subjectId,
         @RequestParam(required = false) String keyword,
         @RequestParam(defaultValue = "1") int page,
         @RequestParam(defaultValue = "6") int size
     ) {
-        return feedService.getAllGroups(userId, subjectId, keyword, page, size);
+        return feedService.getAllGroups(subjectId, keyword, page, size);
     }
 
     @PostMapping("/groups")
@@ -94,30 +92,26 @@ public class FeedController {
     }
 
     @GetMapping("/groups/{groupId}")
-    public GroupDetailResponse getGroupDetail(
-        @PathVariable Long groupId,
-        @RequestParam(required = false) Long userId
-    ) {
-        return feedService.getGroupDetail(groupId, userId);
+    public GroupDetailResponse getGroupDetail(@PathVariable Long groupId) {
+        return feedService.getGroupDetail(groupId);
     }
 
     @PostMapping("/groups/{groupId}/join")
-    public GroupResponse joinGroup(@PathVariable Long groupId, @RequestParam Long userId) {
-        return feedService.joinGroup(groupId, userId);
+    public GroupResponse joinGroup(@PathVariable Long groupId) {
+        return feedService.joinGroup(groupId);
     }
 
     @DeleteMapping("/groups/{groupId}/join")
-    public GroupResponse cancelJoinRequest(@PathVariable Long groupId, @RequestParam Long userId) {
-        return feedService.cancelJoinRequest(groupId, userId);
+    public GroupResponse cancelJoinRequest(@PathVariable Long groupId) {
+        return feedService.cancelJoinRequest(groupId);
     }
 
     @PatchMapping("/groups/{groupId}/members/{targetUserId}/approve")
     public void approveGroupMember(
         @PathVariable Long groupId,
-        @PathVariable Long targetUserId,
-        @RequestParam Long userId
+        @PathVariable Long targetUserId
     ) {
-        feedService.approveGroupMember(groupId, userId, targetUserId);
+        feedService.approveGroupMember(groupId, targetUserId);
     }
 
     @PatchMapping("/groups/{groupId}/members/{targetUserId}/reject")
@@ -126,25 +120,24 @@ public class FeedController {
         @PathVariable Long targetUserId,
         @Valid @RequestBody RejectGroupMemberRequest request
     ) {
-        feedService.rejectGroupMember(groupId, request.getUserId(), targetUserId, request.getReason());
+        feedService.rejectGroupMember(groupId, targetUserId, request.getReason());
     }
 
     @DeleteMapping("/groups/{groupId}/members")
-    public void leaveGroup(@PathVariable Long groupId, @RequestParam Long userId) {
-        feedService.leaveGroup(groupId, userId);
+    public void leaveGroup(@PathVariable Long groupId) {
+        feedService.leaveGroup(groupId);
     }
 
     @DeleteMapping("/groups/{groupId}")
-    public void deleteGroup(@PathVariable Long groupId, @RequestParam Long userId) {
-        feedService.deleteGroup(groupId, userId);
+    public void deleteGroup(@PathVariable Long groupId) {
+        feedService.deleteGroup(groupId);
     }
 
     @GetMapping("/users/{userId}/posts")
     public List<FeedPostResponse> getUserPosts(
-        @PathVariable Long userId,
-        @RequestParam(required = false) Long currentUserId
+        @PathVariable Long userId
     ) {
-        return feedService.getPostsByUser(userId, currentUserId);
+        return feedService.getPostsByUser(userId);
     }
 
     @PostMapping("/posts/{postId}/reactions")
@@ -158,8 +151,8 @@ public class FeedController {
     }
 
     @DeleteMapping("/posts/{postId}")
-    public void deletePost(@PathVariable Long postId, @RequestParam Long userId) {
-        feedService.deletePost(postId, userId);
+    public void deletePost(@PathVariable Long postId) {
+        feedService.deletePost(postId);
     }
 
     @GetMapping("/posts/{postId}/comments")
@@ -175,9 +168,8 @@ public class FeedController {
     @DeleteMapping("/posts/{postId}/comments/{commentId}")
     public void deleteComment(
         @PathVariable Long postId,
-        @PathVariable Long commentId,
-        @RequestParam Long userId
+        @PathVariable Long commentId
     ) {
-        feedService.deleteComment(postId, commentId, userId);
+        feedService.deleteComment(postId, commentId);
     }
 }

@@ -6,6 +6,7 @@ import com.gr1.studynet_backend.dto.RegisterRequest;
 import com.gr1.studynet_backend.dto.UserResponse;
 import com.gr1.studynet_backend.model.User;
 import com.gr1.studynet_backend.repository.UserRepository;
+import com.gr1.studynet_backend.security.AuthenticatedUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -47,15 +48,39 @@ public class AuthService {
         return new AuthResponse("Đăng nhập thành công.", mapUser(user));
     }
 
+    public UserResponse getCurrentUser(AuthenticatedUser authenticatedUser) {
+        return mapUser(
+            authenticatedUser.getId(),
+            authenticatedUser.getFullName(),
+            authenticatedUser.getEmail(),
+            authenticatedUser.getSchool(),
+            authenticatedUser.getMajor(),
+            authenticatedUser.getInterestedSubjects(),
+            authenticatedUser.getRole()
+        );
+    }
+
     private UserResponse mapUser(User user) {
-        return new UserResponse(
+        return mapUser(
             user.getId(),
             user.getFullName(),
             user.getEmail(),
             user.getSchool(),
             user.getMajor(),
-            deserializeInterestedSubjects(user.getInterestedSubjects()),
+            user.getInterestedSubjects(),
             user.getRole()
+        );
+    }
+
+    private UserResponse mapUser(Long id, String fullName, String email, String school, String major, String interestedSubjects, String role) {
+        return new UserResponse(
+            id,
+            fullName,
+            email,
+            school,
+            major,
+            deserializeInterestedSubjects(interestedSubjects),
+            role
         );
     }
 

@@ -3,7 +3,7 @@ import { BookOpen, Eye, EyeOff, Mail, Lock, ArrowRight, AlertCircle } from 'luci
 import { useForm } from 'react-hook-form';
 import { motion } from 'framer-motion';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { login as loginRequest } from '../services/api';
+import { loginWithToken as loginRequest } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginPage() {
@@ -31,7 +31,7 @@ export default function LoginPage() {
       setLoginError('');
       setIsLoading(true);
       const response = await loginRequest(data);
-      login(response.user);
+      login(response.user, response.authToken);
       navigate('/feed');
     } catch (error) {
       setLoginError(error.message || 'Đăng nhập thất bại.');

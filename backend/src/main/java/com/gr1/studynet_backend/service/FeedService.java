@@ -56,15 +56,14 @@ public class FeedService {
     private final ReactionRepository reactionRepository;
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
+    private final CurrentUserService currentUserService;
 
     public List<Subject> getSubjects() {
         return subjectRepository.findAll();
     }
 
-    public List<FeedPostResponse> getFeed(Long subjectId, String keyword, String type, String sortBy, Long currentUserId) {
-        if (currentUserId == null) {
-            return List.of();
-        }
+    public List<FeedPostResponse> getFeed(Long subjectId, String keyword, String type, String sortBy) {
+        Long currentUserId = currentUserService.getCurrentUserId();
 
         String normalizedType = normalizeNullable(type);
         String normalizedKeyword = keyword == null ? "" : keyword.trim().toLowerCase(Locale.ROOT);
@@ -85,20 +84,22 @@ public class FeedService {
         return mappedPosts;
     }
 
-    public List<GroupResponse> getUserGroups(Long userId) {
-        return groupMemberRepository.findByUserIdAndMembershipStatus(userId, "APPROVED").stream()
-            .map(member -> mapGroup(member.getGroup(), userId, member.getRole()))
+    public List<GroupResponse> getUserGroups() {
+        Long currentUserId = currentUserService.getCurrentUserId();
+        return groupMemberRepository.findByUserIdAndMembershipStatus(currentUserId, "APPROVED").stream()
+            .map(member -> mapGroup(member.getGroup(), currentUserId, member.getRole()))
             .toList();
     }
 
-    public long getUnreadNotificationCount(Long userId) {
-        return notificationRepository.findByReceiverIdOrderByCreatedAtDesc(userId).stream()
+    public long getUnreadNotificationCount() {
+        return notificationRepository.findByReceiverIdOrderByCreatedAtDesc(currentUserService.getCurrentUserId()).stream()
             .filter(notification -> !Boolean.TRUE.equals(notification.getIsRead()))
             .filter(notification -> IMPORTANT_NOTIFICATION_TYPES.contains(notification.getType()))
             .count();
     }
 
-    public GroupPageResponse getAllGroups(Long userId, Long subjectId, String keyword, int page, int size) {
+    public GroupPageResponse getAllGroups(Long subjectId, String keyword, int page, int size) {
+        Long currentUserId = currentUserService.getCurrentUserId();
         List<Group> groups = subjectId != null
             ? groupRepository.findBySubjectId(subjectId)
             : groupRepository.findAll();
@@ -110,7 +111,7 @@ public class FeedService {
                 || contains(group.getName(), normalizedKeyword)
                 || contains(group.getDescription(), normalizedKeyword)
                 || (group.getSubject() != null && contains(group.getSubject().getName(), normalizedKeyword)))
-            .map(group -> mapGroup(group, userId, null))
+            .map(group -> mapGroup(group, currentUserId, null))
             .toList();
 
         int safeSize = Math.max(1, size);
@@ -134,7 +135,7 @@ public class FeedService {
 
     @Transactional
     public GroupResponse createGroup(CreateGroupRequest request) {
-        User creator = userRepository.findById(request.getCreatorId())
+        User creator = userRepository.findById(currentUserService.getCurrentUserId())
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người tạo nhóm."));
         Subject subject = resolveSubject(request.getSubjectId(), request.getCustomSubjectName());
 
@@ -156,7 +157,8 @@ public class FeedService {
     }
 
     @Transactional
-    public GroupResponse joinGroup(Long groupId, Long userId) {
+    public GroupResponse joinGroup(Long groupId) {
+        Long userId = currentUserService.getCurrentUserId();
         Group group = groupRepository.findById(groupId)
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhóm."));
         User user = userRepository.findById(userId)
@@ -177,7 +179,8 @@ public class FeedService {
     }
 
     @Transactional
-    public GroupResponse cancelJoinRequest(Long groupId, Long userId) {
+    public GroupResponse cancelJoinRequest(Long groupId) {
+        Long userId = currentUserService.getCurrentUserId();
         Group group = groupRepository.findById(groupId)
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhóm."));
         GroupMember membership = groupMemberRepository.findByUserIdAndGroupId(userId, groupId)
@@ -193,7 +196,8 @@ public class FeedService {
     }
 
     @Transactional
-    public void leaveGroup(Long groupId, Long userId) {
+    public void leaveGroup(Long groupId) {
+        Long userId = currentUserService.getCurrentUserId();
         GroupMember membership = groupMemberRepository.findByUserIdAndGroupId(userId, groupId)
             .orElseThrow(() -> new IllegalArgumentException("Bạn chưa tham gia nhóm này."));
 
@@ -205,7 +209,8 @@ public class FeedService {
     }
 
     @Transactional
-    public void deleteGroup(Long groupId, Long userId) {
+    public void deleteGroup(Long groupId) {
+        Long userId = currentUserService.getCurrentUserId();
         Group group = groupRepository.findById(groupId)
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhóm."));
         GroupMember membership = groupMemberRepository.findByUserIdAndGroupId(userId, groupId)
@@ -229,7 +234,8 @@ public class FeedService {
         groupRepository.delete(group);
     }
 
-    public GroupDetailResponse getGroupDetail(Long groupId, Long userId) {
+    public GroupDetailResponse getGroupDetail(Long groupId) {
+        Long userId = currentUserService.getCurrentUserId();
         Group group = groupRepository.findById(groupId)
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhóm."));
 
@@ -266,7 +272,8 @@ public class FeedService {
     }
 
     @Transactional
-    public void approveGroupMember(Long groupId, Long adminUserId, Long targetUserId) {
+    public void approveGroupMember(Long groupId, Long targetUserId) {
+        Long adminUserId = currentUserService.getCurrentUserId();
         GroupMember adminMembership = groupMemberRepository.findByUserIdAndGroupId(adminUserId, groupId)
             .orElseThrow(() -> new IllegalArgumentException("Bạn không có quyền duyệt thành viên nhóm này."));
         if (!"GROUP_ADMIN".equalsIgnoreCase(adminMembership.getRole())) {
@@ -293,7 +300,8 @@ public class FeedService {
     }
 
     @Transactional
-    public void rejectGroupMember(Long groupId, Long adminUserId, Long targetUserId, String reason) {
+    public void rejectGroupMember(Long groupId, Long targetUserId, String reason) {
+        Long adminUserId = currentUserService.getCurrentUserId();
         GroupMember adminMembership = groupMemberRepository.findByUserIdAndGroupId(adminUserId, groupId)
             .orElseThrow(() -> new IllegalArgumentException("Bạn không có quyền từ chối thành viên nhóm này."));
         if (!"GROUP_ADMIN".equalsIgnoreCase(adminMembership.getRole())) {
@@ -318,7 +326,7 @@ public class FeedService {
 
     @Transactional
     public FeedPostResponse createPost(CreatePostRequest request) {
-        User user = userRepository.findById(request.getUserId())
+        User user = userRepository.findById(currentUserService.getCurrentUserId())
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng."));
 
         boolean hasContent = request.getContent() != null && !request.getContent().trim().isBlank();
@@ -360,10 +368,11 @@ public class FeedService {
 
     @Transactional
     public FeedPostResponse updatePost(Long postId, UpdatePostRequest request) {
+        Long currentUserId = currentUserService.getCurrentUserId();
         Post post = postRepository.findById(postId)
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài viết."));
 
-        if (!post.getUser().getId().equals(request.getUserId())) {
+        if (!post.getUser().getId().equals(currentUserId)) {
             throw new IllegalArgumentException("Chỉ người đăng mới có thể chỉnh sửa bài viết này.");
         }
 
@@ -380,11 +389,11 @@ public class FeedService {
         post.setType(request.getType().trim().toUpperCase(Locale.ROOT));
 
         Post savedPost = postRepository.save(post);
-        return mapPost(savedPost, request.getUserId());
+        return mapPost(savedPost, currentUserId);
     }
 
-    public List<NotificationResponse> getNotifications(Long userId) {
-        return notificationRepository.findByReceiverIdOrderByCreatedAtDesc(userId).stream()
+    public List<NotificationResponse> getNotifications() {
+        return notificationRepository.findByReceiverIdOrderByCreatedAtDesc(currentUserService.getCurrentUserId()).stream()
             .filter(notification -> IMPORTANT_NOTIFICATION_TYPES.contains(notification.getType()))
             .map(notification -> new NotificationResponse(
                 notification.getId(),
@@ -398,23 +407,24 @@ public class FeedService {
     }
 
     @Transactional
-    public void markNotificationAsRead(Long userId, Long notificationId) {
-        Notification notification = notificationRepository.findByIdAndReceiverId(notificationId, userId)
+    public void markNotificationAsRead(Long notificationId) {
+        Notification notification = notificationRepository.findByIdAndReceiverId(notificationId, currentUserService.getCurrentUserId())
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy thông báo."));
         notification.setIsRead(true);
         notificationRepository.save(notification);
     }
 
-    public List<FeedPostResponse> getPostsByUser(Long userId, Long currentUserId) {
+    public List<FeedPostResponse> getPostsByUser(Long userId) {
+        Long viewerUserId = currentUserService.getCurrentUserId();
         return postRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
-            .map(post -> mapPost(post, currentUserId))
+            .map(post -> mapPost(post, viewerUserId))
             .toList();
     }
 
     public ReactionSummaryResponse reactToPost(Long postId, ReactionRequest request) {
         Post post = postRepository.findById(postId)
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài viết."));
-        User user = userRepository.findById(request.getUserId())
+        User user = userRepository.findById(currentUserService.getCurrentUserId())
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng."));
 
         validateApprovedGroupMembership(post, user.getId(), "thả cảm xúc vào bài viết này");
@@ -442,7 +452,8 @@ public class FeedService {
     }
 
     @Transactional
-    public void deletePost(Long postId, Long userId) {
+    public void deletePost(Long postId) {
+        Long userId = currentUserService.getCurrentUserId();
         Post post = postRepository.findById(postId)
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài viết."));
 
@@ -471,7 +482,7 @@ public class FeedService {
     public CommentResponse addComment(Long postId, CommentRequest request) {
         Post post = postRepository.findById(postId)
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài viết."));
-        User user = userRepository.findById(request.getUserId())
+        User user = userRepository.findById(currentUserService.getCurrentUserId())
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng."));
 
         validateApprovedGroupMembership(post, user.getId(), "bình luận bài viết này");
@@ -494,7 +505,8 @@ public class FeedService {
     }
 
     @Transactional
-    public void deleteComment(Long postId, Long commentId, Long userId) {
+    public void deleteComment(Long postId, Long commentId) {
+        Long userId = currentUserService.getCurrentUserId();
         Comment comment = commentRepository.findByIdAndPostId(commentId, postId)
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bình luận."));
 

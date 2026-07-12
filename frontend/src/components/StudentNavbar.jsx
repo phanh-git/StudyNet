@@ -21,8 +21,8 @@ export default function StudentNavbar({ searchValue, onSearchValueChange, onSear
 
     async function loadNotifications() {
       const [notificationItems, summary] = await Promise.all([
-        fetchNotifications(user.id),
-        fetchUnreadNotificationCount(user.id),
+        fetchNotifications(),
+        fetchUnreadNotificationCount(),
       ]);
 
       if (!ignore) {
@@ -45,7 +45,7 @@ export default function StudentNavbar({ searchValue, onSearchValueChange, onSear
       setUnreadCount((count) => Math.max(0, count - 1));
 
       try {
-        await markNotificationAsRead(user.id, notification.id);
+        await markNotificationAsRead(notification.id);
       } catch {
         setNotifications((current) => current.map((item) => (
           item.id === notification.id ? { ...item, isRead: false } : item

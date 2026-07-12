@@ -41,7 +41,7 @@ export default function GroupDetailPage() {
 
   const loadGroupDetail = async () => {
     try {
-      const detail = await fetchGroupDetail(groupId, user.id);
+      const detail = await fetchGroupDetail(groupId);
       setGroupDetail(detail);
       setPageError('');
     } catch (error) {
@@ -71,7 +71,7 @@ export default function GroupDetailPage() {
 
   const handleJoinRequest = async () => {
     try {
-      const updatedGroup = await joinGroup(groupId, user.id);
+      const updatedGroup = await joinGroup(groupId);
       setGroupDetail((current) => current ? { ...current, group: updatedGroup } : current);
       setPageError('');
     } catch (error) {
@@ -81,7 +81,7 @@ export default function GroupDetailPage() {
 
   const handleCancelJoinRequest = async () => {
     try {
-      const updatedGroup = await cancelJoinRequest(groupId, user.id);
+      const updatedGroup = await cancelJoinRequest(groupId);
       setGroupDetail((current) => current ? { ...current, group: updatedGroup } : current);
       setPageError('');
       setActionMessage('Đã hủy yêu cầu tham gia nhóm.');
@@ -98,7 +98,6 @@ export default function GroupDetailPage() {
       const createdPost = await createPost({
         content: composerContent.trim(),
         type: composerType,
-        userId: user.id,
         groupId: Number(groupId),
         subjectId: groupDetail?.group.subjectId ?? null,
         fileUrl: composerAttachment?.fileUrl ?? null,
@@ -181,7 +180,7 @@ export default function GroupDetailPage() {
 
   const handleReact = async (postId, type = 'LIKE') => {
     try {
-      const summary = await reactToPost(postId, { userId: user.id, type });
+      const summary = await reactToPost(postId, { type });
       setGroupDetail((current) => current ? {
         ...current,
         posts: current.posts.map((post) => (
@@ -200,7 +199,7 @@ export default function GroupDetailPage() {
     if (!content) return;
 
     try {
-      const createdComment = await addComment(postId, { userId: user.id, content });
+      const createdComment = await addComment(postId, { content });
       setCommentsByPost((current) => ({
         ...current,
         [postId]: [...(current[postId] ?? []), createdComment],
@@ -223,7 +222,7 @@ export default function GroupDetailPage() {
       return;
     }
 
-    await deleteComment(postId, commentId, user.id);
+    await deleteComment(postId, commentId);
     setCommentsByPost((current) => ({
       ...current,
       [postId]: (current[postId] ?? []).filter((comment) => comment.id !== commentId),
@@ -254,7 +253,7 @@ export default function GroupDetailPage() {
 
     try {
       setIsProcessingAction(true);
-      await leaveGroup(groupId, user.id);
+      await leaveGroup(groupId);
       navigate('/groups');
     } catch (error) {
       setPageError(error.message || 'Không thể rời nhóm lúc này.');
@@ -270,7 +269,7 @@ export default function GroupDetailPage() {
 
     try {
       setIsProcessingAction(true);
-      await deleteGroup(groupId, user.id);
+      await deleteGroup(groupId);
       navigate('/groups');
     } catch (error) {
       setPageError(error.message || 'Không thể xóa nhóm lúc này.');
@@ -286,7 +285,7 @@ export default function GroupDetailPage() {
 
     try {
       setIsProcessingAction(true);
-      await approveGroupMember(groupId, targetUserId, user.id);
+      await approveGroupMember(groupId, targetUserId);
       await loadGroupDetail();
       setActionMessage('Đã duyệt yêu cầu tham gia nhóm.');
       setPageError('');
@@ -320,7 +319,6 @@ export default function GroupDetailPage() {
     try {
       setIsProcessingAction(true);
       await rejectGroupMember(groupId, rejectModalMember.userId, {
-        userId: user.id,
         reason: trimmedReason,
       });
       await loadGroupDetail();
@@ -339,7 +337,6 @@ export default function GroupDetailPage() {
     try {
       await updatePost(postId, {
         ...payload,
-        userId: user.id,
       });
       await loadGroupDetail();
       setActionMessage('Bài viết đã được cập nhật.');
@@ -356,7 +353,7 @@ export default function GroupDetailPage() {
     }
 
     try {
-      await deletePost(postId, user.id);
+      await deletePost(postId);
       await loadGroupDetail();
       setActionMessage('Bài viết đã được xóa.');
       setPageError('');

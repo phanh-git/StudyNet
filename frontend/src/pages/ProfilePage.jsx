@@ -78,12 +78,12 @@ export default function ProfilePage() {
   ];
 
   const loadProfilePosts = async () => {
-    const postResponse = await fetchUserPosts(targetUserId, user.id);
+    const postResponse = await fetchUserPosts(targetUserId);
     setPosts(postResponse);
   };
 
   useEffect(() => {
-    Promise.all([fetchUserProfile(targetUserId), fetchUserPosts(targetUserId, user.id)])
+    Promise.all([fetchUserProfile(targetUserId), fetchUserPosts(targetUserId)])
       .then(([profileResponse, postResponse]) => {
         setProfile(profileResponse);
         setPosts(postResponse);
@@ -106,7 +106,7 @@ export default function ProfilePage() {
 
   const handleReact = async (postId) => {
     try {
-      const summary = await reactToPost(postId, { userId: user.id, type: 'LIKE' });
+      const summary = await reactToPost(postId, { type: 'LIKE' });
       setPosts((current) => current.map((post) => (
         post.id === postId
           ? { ...post, reactionCount: summary.reactionCount, currentUserReaction: summary.currentUserReaction }
@@ -122,7 +122,7 @@ export default function ProfilePage() {
     if (!content) return;
 
     try {
-      const createdComment = await addComment(postId, { userId: user.id, content });
+      const createdComment = await addComment(postId, { content });
       setCommentsByPost((current) => ({
         ...current,
         [postId]: [...(current[postId] ?? []), createdComment],
@@ -142,7 +142,7 @@ export default function ProfilePage() {
       return;
     }
 
-    await deleteComment(postId, commentId, user.id);
+    await deleteComment(postId, commentId);
     setCommentsByPost((current) => ({
       ...current,
       [postId]: (current[postId] ?? []).filter((comment) => comment.id !== commentId),
@@ -167,7 +167,6 @@ export default function ProfilePage() {
     try {
       await updatePost(postId, {
         ...payload,
-        userId: user.id,
       });
       await loadProfilePosts();
       setActionMessage('Bài viết đã được cập nhật.');
@@ -184,7 +183,7 @@ export default function ProfilePage() {
     }
 
     try {
-      await deletePost(postId, user.id);
+      await deletePost(postId);
       await loadProfilePosts();
       setActionMessage('Bài viết đã được xóa.');
       setPageError('');

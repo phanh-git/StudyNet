@@ -10,7 +10,11 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 
 function App() {
-  const { user } = useAuth();
+  const { user, isAuthLoading } = useAuth();
+
+  if (isAuthLoading) {
+    return null;
+  }
 
   return (
     <div className="App">
