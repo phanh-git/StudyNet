@@ -20,7 +20,6 @@ public class AuthenticatedUser implements UserDetails, Serializable {
     private final String fullName;
     private final String school;
     private final String major;
-    private final String interestedSubjects;
     private final String role;
 
     public AuthenticatedUser(User user) {
@@ -30,7 +29,6 @@ public class AuthenticatedUser implements UserDetails, Serializable {
         this.fullName = user.getFullName();
         this.school = user.getSchool();
         this.major = user.getMajor();
-        this.interestedSubjects = user.getInterestedSubjects();
         this.role = user.getRole();
     }
 
@@ -52,10 +50,6 @@ public class AuthenticatedUser implements UserDetails, Serializable {
 
     public String getMajor() {
         return major;
-    }
-
-    public String getInterestedSubjects() {
-        return interestedSubjects;
     }
 
     public String getRole() {

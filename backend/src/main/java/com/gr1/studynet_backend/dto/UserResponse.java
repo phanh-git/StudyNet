@@ -3,8 +3,6 @@ package com.gr1.studynet_backend.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
-import java.util.List;
-
 @Data
 @AllArgsConstructor
 public class UserResponse {
@@ -13,6 +11,5 @@ public class UserResponse {
     private String email;
     private String school;
     private String major;
-    private List<String> interestedSubjects;
     private String role;
 }

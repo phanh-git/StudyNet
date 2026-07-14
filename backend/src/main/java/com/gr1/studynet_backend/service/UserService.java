@@ -8,8 +8,6 @@ import com.gr1.studynet_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -27,21 +25,9 @@ public class UserService {
             user.getEmail(),
             user.getSchool(),
             user.getMajor(),
-            deserializeInterestedSubjects(user.getInterestedSubjects()),
             user.getRole(),
             groupMemberRepository.findByUserId(userId).size(),
             (int) postRepository.countByUserId(userId)
         );
-    }
-
-    private List<String> deserializeInterestedSubjects(String subjects) {
-        if (subjects == null || subjects.isBlank()) {
-            return List.of();
-        }
-
-        return List.of(subjects.split("\\|\\|")).stream()
-            .map(String::trim)
-            .filter(subject -> !subject.isBlank())
-            .toList();
     }
 }

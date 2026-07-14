@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { addComment, approveGroupMember, cancelJoinRequest, createPost, deleteComment, deleteGroup, deletePost, fetchComments, fetchGroupDetail, joinGroup, leaveGroup, reactToPost, rejectGroupMember, updatePost } from '../services/api';
 import { isImageAttachment, readFileAsDataUrl } from '../utils/postAttachments';
 
+
 const POST_TYPES = [
   { value: 'DISCUSSION', label: 'Thảo luận' },
   { value: 'QUESTION', label: 'Câu hỏi' },
@@ -38,6 +39,7 @@ export default function GroupDetailPage() {
   const [rejectReason, setRejectReason] = useState('');
   const composerRef = useRef(null);
   const fileInputRef = useRef(null);
+
 
   const loadGroupDetail = async () => {
     try {
@@ -560,6 +562,11 @@ export default function GroupDetailPage() {
           {isJoined && (
             <div ref={composerRef} className="rounded-[32px] bg-white p-6 shadow-sm">
               <h3 className="text-lg font-semibold text-slate-900">Tạo bài đăng mới</h3>
+              <div>
+                <h1>Số bài đăng của tôi là</h1>
+                {groupDetail?.posts?.filter((post) => post.authorId === user.id)?.length || 0} bài viết
+              </div>
+              
               <p className="mt-1 text-sm text-slate-500">Đăng bài tập, câu hỏi, thảo luận hoặc tài liệu để cả nhóm cùng trao đổi.</p>
               <div className="mt-4 rounded-3xl border border-slate-200 bg-slate-50 transition focus-within:border-indigo-300 focus-within:bg-white">
                 <textarea

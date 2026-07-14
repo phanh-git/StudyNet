@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   BookOpen, Eye, EyeOff, Mail, Lock, User as UserIcon, School,
   GraduationCap, ArrowRight, CheckCircle, AlertCircle, ArrowLeft, Sparkles,
@@ -13,8 +13,6 @@ const STEPS = [
   { title: 'Học vấn'},
   { title: 'Bảo mật'},
 ];
-
-const SUBJECTS = ['Lập trình', 'Toán học', 'Vật lý', 'Hóa học', 'Ngoại ngữ'];
 
 function PasswordStrength({ password }) {
   const checks = [
@@ -55,6 +53,7 @@ function PasswordStrength({ password }) {
 
 export default function RegisterPage() {
   const [currentStep, setCurrentStep] = useState(0);
+  const [attemptedSteps, setAttemptedSteps] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -62,9 +61,16 @@ export default function RegisterPage() {
   const [submitSuccess, setSubmitSuccess] = useState('');
   const navigate = useNavigate();
 
-  const { register, handleSubmit, watch, trigger, formState: { errors } } = useForm({
-    mode: 'onChange',
-    defaultValues: { interestedSubjects: ['Lập trình'] },
+  const {
+    register,
+    handleSubmit,
+    watch,
+    trigger,
+    clearErrors,
+    formState: { errors, touchedFields, isSubmitted },
+  } = useForm({
+    mode: 'onTouched',
+    reValidateMode: 'onChange',
   });
 
   const password = watch('password') || '';
@@ -81,8 +87,21 @@ export default function RegisterPage() {
 
   const nextStep = async () => {
     const valid = await validateStep(currentStep);
-    if (valid) setCurrentStep((step) => step + 1);
+    if (!valid) {
+      setAttemptedSteps((prev) => ({ ...prev, [currentStep]: true }));
+      return;
+    }
+    setCurrentStep((step) => step + 1);
   };
+
+  const shouldShowError = (fieldName, stepIndex) =>
+    Boolean(errors[fieldName]) && (touchedFields[fieldName] || attemptedSteps[stepIndex] || isSubmitted);
+
+  useEffect(() => {
+    if (currentStep === 2) {
+      clearErrors(['password', 'confirmPassword', 'agreeTerms']);
+    }
+  }, [clearErrors, currentStep]);
 
   const onSubmit = async (data) => {
     try {
@@ -95,7 +114,6 @@ export default function RegisterPage() {
         school: data.school,
         major: data.major,
         password: data.password,
-        interestedSubjects: data.interestedSubjects ?? [],
       });
       setSubmitSuccess('Đăng ký thành công! Đang chuyển đến trang đăng nhập...');
       window.setTimeout(() => {
@@ -153,7 +171,11 @@ export default function RegisterPage() {
               ))}
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)}>
+            <form
+              onSubmit={handleSubmit(onSubmit, () => {
+                setAttemptedSteps((prev) => ({ ...prev, 2: true }));
+              })}
+            >
               <AnimatePresence mode="wait">
                 {currentStep === 0 && (
                   <motion.div
@@ -181,7 +203,7 @@ export default function RegisterPage() {
                           className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                         />
                       </div>
-                      {errors.name && (
+                      {shouldShowError('name', 0) && (
                         <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">
                           <AlertCircle className="w-3.5 h-3.5" />{errors.name.message}
                         </p>
@@ -202,7 +224,7 @@ export default function RegisterPage() {
                           className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                         />
                       </div>
-                      {errors.email && (
+                      {shouldShowError('email', 0) && (
                         <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">
                           <AlertCircle className="w-3.5 h-3.5" />{errors.email.message}
                         </p>
@@ -234,7 +256,7 @@ export default function RegisterPage() {
                           className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                         />
                       </div>
-                      {errors.school && (
+                      {shouldShowError('school', 1) && (
                         <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">
                           <AlertCircle className="w-3.5 h-3.5" />{errors.school.message}
                         </p>
@@ -251,36 +273,12 @@ export default function RegisterPage() {
                           className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                         />
                       </div>
-                      {errors.major && (
+                      {shouldShowError('major', 1) && (
                         <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">
                           <AlertCircle className="w-3.5 h-3.5" />{errors.major.message}
                         </p>
                       )}
                     </div>
-
-                    {/* <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Môn học quan tâm</label>
-                      <div className="grid grid-cols-3 gap-2">
-                        {SUBJECTS.map((subject) => (
-                          <label
-                            key={subject}
-                            className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border cursor-pointer text-xs font-medium transition-all select-none ${
-                              (watch('interestedSubjects') ?? []).includes(subject)
-                                ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200'
-                                : 'bg-white border-gray-200 text-gray-600 hover:border-indigo-300'
-                            }`}
-                          >
-                            <input
-                              {...register('interestedSubjects')}
-                              type="checkbox"
-                              value={subject}
-                              className="hidden"
-                            />
-                            {subject}
-                          </label>
-                        ))}
-                      </div>          
-                    </div> */}
                   </motion.div>
                 )}
 
@@ -319,7 +317,7 @@ export default function RegisterPage() {
                         </button>
                       </div>
                       <PasswordStrength password={password} />
-                      {errors.password && (
+                      {shouldShowError('password', 2) && (
                         <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
                           <AlertCircle className="w-3.5 h-3.5" />{errors.password.message}
                         </p>
@@ -347,7 +345,7 @@ export default function RegisterPage() {
                           {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
-                      {errors.confirmPassword && (
+                      {shouldShowError('confirmPassword', 2) && (
                         <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">
                           <AlertCircle className="w-3.5 h-3.5" />{errors.confirmPassword.message}
                         </p>
@@ -364,7 +362,7 @@ export default function RegisterPage() {
                         Tôi đồng ý với Điều khoản dịch vụ và Chính sách bảo mật của StudyNet.
                       </span>
                     </label>
-                    {errors.agreeTerms && (
+                    {shouldShowError('agreeTerms', 2) && (
                       <p className="text-red-500 text-xs flex items-center gap-1">
                         <AlertCircle className="w-3.5 h-3.5" />{errors.agreeTerms.message}
                       </p>

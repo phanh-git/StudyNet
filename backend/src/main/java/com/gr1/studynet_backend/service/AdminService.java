@@ -91,7 +91,6 @@ public class AdminService {
             user.getSchool(),
             user.getMajor(),
             user.getRole(),
-            deserializeInterestedSubjects(user.getInterestedSubjects()),
             groupMemberRepository.findByUserIdAndMembershipStatus(user.getId(), "APPROVED").size(),
             postRepository.countByUserId(user.getId()),
             user.getCreatedAt()
@@ -128,14 +127,4 @@ public class AdminService {
             .build();
     }
 
-    private List<String> deserializeInterestedSubjects(String subjects) {
-        if (subjects == null || subjects.isBlank()) {
-            return List.of();
-        }
-
-        return List.of(subjects.split("\\|\\|")).stream()
-            .map(String::trim)
-            .filter(subject -> !subject.isBlank())
-            .toList();
-    }
 }

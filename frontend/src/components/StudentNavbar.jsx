@@ -88,7 +88,7 @@ export default function StudentNavbar({ searchValue, onSearchValueChange, onSear
             }`}
           >
             <Home className="h-4 w-4" />
-            Bảng tin
+            Bảng tin            
           </NavLink>
           <NavLink
             to="/groups"
